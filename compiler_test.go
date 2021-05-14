@@ -148,7 +148,7 @@ var testCases = []struct {
 
 func TestCompile(t *testing.T) {
 	m := make(map[string]map[string]string, 1)
-	m["v_test"] =  FormDinamicModel(reflect.ValueOf(TestModel{}))
+	m["v_test"] = FormDinamicModel(reflect.ValueOf(TestModel{}))
 
 	for index, c := range testCases {
 		t.Run(strconv.Itoa(index+1), func(t *testing.T) {

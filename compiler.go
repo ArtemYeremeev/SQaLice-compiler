@@ -13,6 +13,7 @@ var operatorBindings = map[string]string{
 	"<=": "<=", // LESS OR EQUALS
 	">":  ">",  // GREATER
 	">=": ">=", // GREATER OR EQUALS
+	">>": "&&", // OVERLAPS
 }
 
 var logicalBindings = map[string]string{
@@ -275,6 +276,10 @@ func formCondition(fieldsMap map[string]string, cond string, logicalOperator str
 			sep = queryOp + "="
 			break
 		}
+		if strings.Contains(cond, queryOp+">") {
+			sep = queryOp + ">"
+			break
+		}
 	}
 
 	if sep == "" {
@@ -299,7 +304,6 @@ func formCondition(fieldsMap map[string]string, cond string, logicalOperator str
 			valueType = "INT"
 		}
 	}
-
 	var arrValue string
 	if valueType == "" && strings.Contains(value, ",") { // handle array type
 		arrValues := strings.Split(value, ",")
@@ -318,14 +322,25 @@ func formCondition(fieldsMap map[string]string, cond string, logicalOperator str
 		}
 		valueType = "ARRAY"
 	}
+	if valueType == "" { // string format
+		value = addPGQuotes(value)
+	}
 
-	switch valueType {
-	case "": // default string format
-		cond = field + operatorBindings[sep] + addPGQuotes(value)
-	case "ARRAY": // array format
-		cond = field + " " + operatorBindings[sep] + " any(array[" + strings.TrimRight(arrValue, ",") + "])"
-	default: // others
-		cond = field + operatorBindings[sep] + value
+	switch operatorBindings[sep] { // switch operators
+	case "&&": // handle OVERLAPS operator
+		switch valueType {
+		case "ARRAY": // array format
+			cond = field + " " + operatorBindings[sep] + " array[" + strings.TrimRight(arrValue, ",") + "]"
+		default: // others
+			cond = field + " " + operatorBindings[sep] + " array[" + value + "]"
+		}
+	default: // rest of operators
+		switch valueType {
+		case "ARRAY": // array format
+			cond = field + " " + operatorBindings[sep] + " any(array[" + strings.TrimRight(arrValue, ",") + "])"
+		default: // others
+			cond = field + " " + operatorBindings[sep] + " " + value
+		}
 	}
 
 	if logicalOperator != "" {

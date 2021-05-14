@@ -1,9 +1,9 @@
 package compiler
 
 import (
+	"errors"
 	"reflect"
 	"strings"
-	"errors"
 )
 
 // FormDinamicModel forms a model containing fields for building query
@@ -29,4 +29,3 @@ func newError(errText string) error {
 
 	return errors.New("[SQaLice] " + errText)
 }
-
