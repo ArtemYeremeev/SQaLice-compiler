@@ -303,7 +303,7 @@ http://url/.../query=ID,title,updatedAt?(title==testText)*ID!=8?ID,desc,2,0
     {
         "fieldName": "id",
         "operator": "!=",
-        "value": {8},
+        "value": {"8"},
         "isBracket": false
     },
 ]
