@@ -293,20 +293,20 @@ http://url/.../query=ID,title,updatedAt?(title==testText)*ID!=8?ID,desc,2,0
 Получаемый массив условий:
 
 ```json
-{
-    [
+[
+    {
         "fieldName": "title",
         "operator": "=",
-        "value": {"testText"}
+        "value": {"testText"},
         "isBracket": true
-    ],
-    [
+    },
+    {
         "fieldName": "id",
         "operator": "!=",
-        "value": {8}
+        "value": {8},
         "isBracket": false
-    ],
-}
+    },
+]
 ```
 
 При обработке строки запроса, не содержащей условий, будет возвращен пустой массив:
@@ -348,12 +348,10 @@ http://url/.../query=ID,title,updatedAt?(ID==3)*ID!=8?ID,desc,2,0
 
 ```json
 {
-    [
-        "fieldName": "id",
-        "operator": "=",
-        "value": {"3"}
-        "isBracket": true
-    ],
+    "fieldName": "id",
+    "operator": "=",
+    "value": {"3"},
+    "isBracket": true
 }
 ```
 
