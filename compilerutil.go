@@ -26,6 +26,5 @@ func newError(errText string) error {
 	if errText == "" {
 		errText = "Unexpected error"
 	}
-
 	return errors.New("[SQaLice] " + errText)
 }

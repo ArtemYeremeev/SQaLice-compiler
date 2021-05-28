@@ -64,7 +64,8 @@ func Compile(modelsMap map[string]map[string]string, target string, params strin
 	var countQuery string
 	mainQuery := strings.Join(respArray, " ")
 	if withCount { // compile query to get count of result rows
-		countQuery = "select count(*) from (" + strings.Join([]string{selectBlock, fromBlock, whereBlock}, " ") + ") q"
+		q := strings.TrimSpace(strings.Join([]string{selectBlock, fromBlock, whereBlock}, " "))
+		countQuery = "select count(*) from (" + q + ") q"
 	}
 
 	return mainQuery, countQuery, nil
@@ -207,9 +208,12 @@ func combineRestrictions(fieldsMap map[string]string, rests string) (string, err
 	// limit
 	limit := restsArray[2]
 	if limit != "" {
-		_, err := strconv.Atoi(limit)
+		n, err := strconv.Atoi(limit)
 		if err != nil {
 			return "", newError("Unexpected selection limit - " + limit)
+		}
+		if n < 0 {
+			return "", newError("Invaild negative selection limit - " + limit)
 		}
 
 		if restsBlock == "" {
@@ -222,9 +226,12 @@ func combineRestrictions(fieldsMap map[string]string, rests string) (string, err
 	// offset
 	offset := restsArray[3]
 	if offset != "" {
-		_, err := strconv.Atoi(offset)
+		n, err := strconv.Atoi(offset)
 		if err != nil {
 			return "", newError("Unexpected selection offset - " + offset)
+		}
+		if n < 0 {
+			return "", newError("Invaild negative selection offset - " + offset)
 		}
 
 		if restsBlock == "" {
