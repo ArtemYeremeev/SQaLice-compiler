@@ -200,25 +200,11 @@ var testGetRestsCases = []struct {
 	Limit  int
 	Offset int
 }{
-	{ // 1. Test with empty block
-		Query:  "??",
-		Field:  "",
-		Order:  "",
-		Limit:  0,
-		Offset: 0,
-	},
-	{ // 2. Test query with full rests block
+	{ // 1. Test query with full rests block
 		Query:  "??ID,asc,10,0",
 		Field:  "id",
 		Order:  "asc",
 		Limit:  10,
-		Offset: 0,
-	},
-	{ // 3. Test query with partial rests block
-		Query:  "??isBool,desc,,",
-		Field:  "is_bool",
-		Order:  "desc",
-		Limit:  0,
 		Offset: 0,
 	},
 }
@@ -262,7 +248,7 @@ func TestGetSortOrder(t *testing.T) {
 	}
 }
 
-func TestGetGetLimit(t *testing.T) {
+func TestGetLimit(t *testing.T) {
 	for index, c := range testGetRestsCases {
 		t.Run(strconv.Itoa(index+1), func(t *testing.T) {
 			limit, err := GetLimit(c.Query)
@@ -271,16 +257,21 @@ func TestGetGetLimit(t *testing.T) {
 				t.FailNow()
 			}
 
-			// Handle empty struct
-			if *limit != c.Limit {
-				t.Errorf("Expected sort field: %v, got: %v", c.Limit, limit)
+			if limit != nil {
+				if *limit != c.Limit {
+					t.Errorf("Expected limit: %v, got: %v", c.Limit, limit)
+					t.FailNow()
+				}
+			}
+			if limit == nil && &c.Limit != nil {
+				t.Errorf("Expected limit: %v, got: %v", c.Limit, limit)
 				t.FailNow()
 			}
 		})
 	}
 }
 
-func TestGetGetOffset(t *testing.T) {
+func TestGetOffset(t *testing.T) {
 	for index, c := range testGetRestsCases {
 		t.Run(strconv.Itoa(index+1), func(t *testing.T) {
 			offset, err := GetOffset(c.Query)
@@ -289,9 +280,14 @@ func TestGetGetOffset(t *testing.T) {
 				t.FailNow()
 			}
 
-			// Handle empty struct
-			if *offset != c.Offset {
-				t.Errorf("Expected sort field: %v, got: %v", c.Offset, offset)
+			if offset != nil {
+				if *offset != c.Offset {
+					t.Errorf("Expected sort offset: %v, got: %v", c.Offset, offset)
+					t.FailNow()
+				}
+			}
+			if offset == nil && &c.Offset != nil {
+				t.Errorf("Expected sort offset: %v, got: %v", c.Offset, offset)
 				t.FailNow()
 			}
 		})
