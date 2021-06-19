@@ -74,12 +74,14 @@ func Compile(modelsMap map[string]map[string]string, target string, params strin
 // combineSelect assembles SELECT query block
 func combineFields(fieldsMap map[string]string, fields string) (string, error) {
 	selectBlock := "select "
-
-	if fields == "" {
-		selectBlock = selectBlock + "*"
-	} else {
-		var preparedFields []string
-
+	var preparedFields []string
+	if fields == "" { // Request all model fields
+		keys := sortMap(fieldsMap)
+		for _, k := range keys {
+			preparedField := "q." + fieldsMap[k]
+			preparedFields = append(preparedFields, preparedField)
+		}
+	} else { // Request specific fields from query
 		fields := strings.Split(fields, ",")
 		for _, f := range fields {
 			field := fieldsMap[strings.TrimSpace(f)]
@@ -90,9 +92,8 @@ func combineFields(fieldsMap map[string]string, fields string) (string, error) {
 			preparedField := "q." + field
 			preparedFields = append(preparedFields, preparedField)
 		}
-
-		selectBlock = selectBlock + strings.Join(preparedFields, ", ")
 	}
+	selectBlock = selectBlock + strings.Join(preparedFields, ", ")
 
 	return selectBlock, nil
 }

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"reflect"
 	"strings"
+	"sort"
 )
 
 // FormDinamicModel forms a model containing fields for building query
@@ -27,4 +28,13 @@ func newError(errText string) error {
 		errText = "Unexpected error"
 	}
 	return errors.New("[SQaLice] " + errText)
+}
+
+func sortMap(m map[string]string) []string {
+	var keys []string
+	for k := range m {
+    	keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return keys
 }

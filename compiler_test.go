@@ -29,8 +29,8 @@ var testCompileCases = []struct {
 		Params:    "??",
 		WithCount: true,
 
-		MainQuery:  "select * from v_test q",
-		CountQuery: "select count(*) from (select * from v_test q) q",
+		MainQuery:  "select q.id, q.content, q.count, q.is_bool from v_test q",
+		CountQuery: "select count(*) from (select q.id, q.content, q.count, q.is_bool from v_test q) q",
 	},
 	{ // 2. Test fields params block with 1 field
 		Target:    "v_test",
@@ -53,7 +53,7 @@ var testCompileCases = []struct {
 		Params:    "?ID==1?",
 		WithCount: false,
 
-		MainQuery:  "select * from v_test q where q.id = 1",
+		MainQuery:  "select q.id, q.content, q.count, q.is_bool from v_test q where q.id = 1",
 		CountQuery: "",
 	},
 	{ // 5. Test conditions params block with 1 non-bracket conditionsSet
@@ -61,7 +61,7 @@ var testCompileCases = []struct {
 		Params:    "?ID==1*ID==3?",
 		WithCount: false,
 
-		MainQuery:  "select * from v_test q where q.id = 1 and q.id = 3",
+		MainQuery:  "select q.id, q.content, q.count, q.is_bool from v_test q where q.id = 1 and q.id = 3",
 		CountQuery: "",
 	},
 	{ // 6. Test conditions params block with 1 bracket conditionsSet
@@ -109,7 +109,7 @@ var testCompileCases = []struct {
 		Params:    "?ID==1,2,test1*content==test2,true?",
 		WithCount: false,
 
-		MainQuery:  "select * from v_test q where q.id = any(array[1,2,'test1']) and q.content = any(array['test2',true])",
+		MainQuery:  "select q.id, q.content, q.count, q.is_bool from v_test q where q.id = any(array[1,2,'test1']) and q.content = any(array['test2',true])",
 		CountQuery: "",
 	},
 	{ // 12 Test conditions params block with OVERLAPS operator and single value
@@ -157,7 +157,7 @@ var testCompileCases = []struct {
 		Params:    "??,,10,2",
 		WithCount: false,
 
-		MainQuery:  "select * from v_test q limit 10 offset 2",
+		MainQuery:  "select q.id, q.content, q.count, q.is_bool from v_test q limit 10 offset 2",
 		CountQuery: "",
 	},
 }
