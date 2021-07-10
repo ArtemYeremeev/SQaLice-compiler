@@ -1,12 +1,14 @@
 package compiler
 
 import (
+	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
 )
 
 var mathOperatorsList = []string{"==", "!=", "<=", "<", ">=", ">>", ">"}
+var logicOpeatorsList = []string{"*", "||"}
 
 // CondExpr describes structure of query condition
 type CondExpr struct {
@@ -200,6 +202,135 @@ func GetOffset(q string) (limit *int, err error) {
 	}
 
 	return &respOffset, nil
+}
+
+// AddFieldsToSelect adds fieldsMap JSON or fieldsArray fields in SELECT block,
+// replacing current fields in query if isDeleteCurrent passed as true
+func AddQueryFieldsToSelect(query string, fieldsMap map[string]string, fieldsArray []string, isDeleteCurrent bool) (string, error) {
+	if query == "" {
+		return query, newError("Passed empty query for forming fields block")
+	}
+	queryBlocks := strings.Split(query, "?")
+	
+	if fieldsMap != nil {
+		var selectBlock []string
+		for key := range fieldsMap {
+			selectBlock = append(selectBlock, key)
+		}
+		if isDeleteCurrent {
+			queryBlocks[0] = strings.Join(selectBlock, ",")
+		} else {
+			queryBlocks[0] = queryBlocks[0] + "," + strings.Join(selectBlock, ",")
+		}
+
+		return strings.Join(queryBlocks, "?"), nil
+	}
+	if fieldsArray != nil {
+		queryBlocks[0] = strings.Join(fieldsArray, ",")
+		return strings.Join(queryBlocks, "?"), nil
+	}
+
+	return query, nil
+}
+
+// AddQueryConditions adds conditions to query conditions list with AND separators
+// If isDeleteCurrent argument passed, conds list peplacing current query conditions
+func AddQueryConditions(query string, conds []CondExpr, isDeleteCurrent bool) (string, error) {
+	if query == "" {
+		return query, newError("Passed empty query for forming conditions block")
+	}
+	if conds == nil {
+		return query, nil
+	}
+	queryBlocks := strings.Split(query, "?")
+
+	if isDeleteCurrent {
+		queryBlocks[1] = ""
+	}
+
+	for _, cond := range conds {
+		if cond.FieldName == "" {
+			continue
+		}
+
+		isOperatorCorrect := false
+		for _, key := range mathOperatorsList { // check condition operator
+			cond.Operator = key
+			isOperatorCorrect = true
+		}
+		if !isOperatorCorrect {
+			return query, newError("Passed incorrect operator in query condition - " + cond.Operator)
+		}
+
+		if queryBlocks[1] != "" { // separates conditions with AND logical operator
+			queryBlocks[1] = queryBlocks[1] + " * "
+		}
+		if cond.IsBracket { // handle bracket condition
+			queryBlocks[1] = queryBlocks[1] + "(" + cond.FieldName + " " + cond.Operator + " " + fmt.Sprintf("%v", cond.Value) + ")"
+		} else {
+			queryBlocks[1] = queryBlocks[1] + cond.FieldName + " " + cond.Operator + " " + fmt.Sprintf("%v", cond.Value)
+		}
+	}
+
+	return strings.Join(queryBlocks, "?"), nil
+}
+
+// ReplaceQueryCondition replaces query condition by fieldName
+func ReplaceQueryCondition(query string, cond CondExpr) (string, error) {
+	if query == "" {
+		return query, newError("Passed empty query for changing condition")
+	}
+	queryBlocks := strings.Split(query, "?")
+
+	fieldIndex := strings.Index(queryBlocks[1], cond.FieldName)
+	if fieldIndex == -1 {
+		return "", newError("Condition with fieldName " + cond.FieldName + " not found")
+	}
+
+	var logicOpIndex int
+	for fieldIndex > logicOpIndex && logicOpIndex != -1 {
+		logicOpIndex = strings.IndexAny(queryBlocks[0], strings.Join(logicOpeatorsList, ""))
+	}
+
+	/* var logicOpIndex int
+	for fieldIndex > logicOpIndex && logicOpIndex != -1 {
+		logicOpIndex = strings.IndexAny(queryBlocks[0], strings.Join(logicOpeatorsList, ""))
+	}
+	if logicOpIndex == -1 {
+		queryBlocks[1] = 
+	} */
+
+	return strings.Join(queryBlocks, "?"), nil
+}
+
+// AddQueryRestrictions adds restrictions to query restrictions block instead of current
+// If argument is not passed, query saves current parameter 
+func AddQueryRestrictions(query string, sortField string, sortOrder string, limit string, offset string) (string, error) {
+	if query == "" {
+		return query, newError("Passed empty query for forming restrictions block")
+	}
+	queryBlocks := strings.Split(query, "?")
+	currentRests := strings.Split(queryBlocks[2], ",")
+
+	// sortField
+	if sortField != "" {
+		currentRests[0] = sortField
+	}
+	// sortOrder
+	if sortOrder != "" && (sortOrder == "asc" || sortOrder == "desc") {
+		currentRests[1] = sortOrder
+	}
+	// limit
+	if limit != "" && !strings.Contains(limit, "-") {
+		currentRests[2] = limit
+	}
+	// offset
+	if offset != "" && !strings.Contains(offset, "-") {
+		currentRests[3] = offset
+	}
+	queryBlocks[2] = strings.Join(currentRests, ",")
+	
+	return strings.Join(queryBlocks, "?"), nil
 }
 
 func extractQueryCondition(fieldsMap map[string]string, cond string) (condExpr *CondExpr, err error) {
