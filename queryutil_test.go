@@ -1,4 +1,4 @@
-package compiler
+package main
 
 import (
 	"fmt"
@@ -91,7 +91,7 @@ func TestGetConditionsList(t *testing.T) {
 
 	for index, c := range testGetConditionsListCases {
 		t.Run(strconv.Itoa(index+1), func(t *testing.T) {
-			condsList, err := GetConditionsList(m["v_test"], c.Query)
+			condsList, err := GetConditionsList(m["v_test"], c.Query, true)
 			if err != nil {
 				t.Errorf("expected err: %v, got: %v", nil, err)
 				t.FailNow()
@@ -156,7 +156,7 @@ func TestGetConditionByName(t *testing.T) {
 
 	for index, c := range testGetConditionByNameCases {
 		t.Run(strconv.Itoa(index+1), func(t *testing.T) {
-			cond, err := GetConditionByName(m["v_test"], c.Query, c.FieldName)
+			cond, err := GetConditionByName(m["v_test"], c.Query, c.FieldName, true)
 			if err != nil {
 				t.Errorf("expected err: %v, got: %v", nil, err)
 				t.FailNow()

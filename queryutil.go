@@ -1,7 +1,9 @@
-package compiler
+package main
 
 import (
 	"fmt"
+	"log"
+	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
@@ -44,7 +46,7 @@ func GetFieldsList(fieldsMap map[string]string, q string) (fieldsList []string, 
 }
 
 // GetConditionsList returns a list of all query conditions in SQL format
-func GetConditionsList(fieldsMap map[string]string, q string) (condExprsList []*CondExpr, err error) {
+func GetConditionsList(fieldsMap map[string]string, q string, toDBFormat bool) (condExprsList []*CondExpr, err error) {
 	if q == "" {
 		return nil, newError("Query string not passed")
 	}
@@ -61,7 +63,7 @@ func GetConditionsList(fieldsMap map[string]string, q string) (condExprsList []*
 			continue
 		}
 
-		expr, err := extractQueryCondition(fieldsMap, cond)
+		expr, err := extractQueryCondition(fieldsMap, cond, toDBFormat)
 		if err != nil {
 			return nil, err
 		}
@@ -73,7 +75,7 @@ func GetConditionsList(fieldsMap map[string]string, q string) (condExprsList []*
 }
 
 // GetConditionByName returns first condition with passed name and operator
-func GetConditionByName(fieldsMap map[string]string, q string, fieldName string) (condExpr *CondExpr, err error) {
+func GetConditionByName(fieldsMap map[string]string, q string, fieldName string, toDBFormat bool) (condExpr *CondExpr, err error) {
 	if q == "" {
 		return nil, newError("Query string not passed")
 	}
@@ -108,7 +110,7 @@ func GetConditionByName(fieldsMap map[string]string, q string, fieldName string)
 			continue
 		}
 
-		return extractQueryCondition(fieldsMap, cond)
+		return extractQueryCondition(fieldsMap, cond, toDBFormat)
 	}
 
 	return nil, nil
@@ -211,7 +213,7 @@ func AddQueryFieldsToSelect(query string, fieldsMap map[string]string, fieldsArr
 		return query, newError("Passed empty query for forming fields block")
 	}
 	queryBlocks := strings.Split(query, "?")
-	
+
 	if fieldsMap != nil {
 		var selectBlock []string
 		for key := range fieldsMap {
@@ -276,35 +278,36 @@ func AddQueryConditions(query string, conds []CondExpr, isDeleteCurrent bool) (s
 }
 
 // ReplaceQueryCondition replaces query condition by fieldName
-func ReplaceQueryCondition(query string, cond CondExpr) (string, error) {
+func ReplaceQueryCondition(fieldsMap map[string]string, query string, newCond CondExpr) (string, error) {
 	if query == "" {
 		return query, newError("Passed empty query for changing condition")
 	}
-	queryBlocks := strings.Split(query, "?")
 
-	fieldIndex := strings.Index(queryBlocks[1], cond.FieldName)
-	if fieldIndex == -1 {
-		return "", newError("Condition with fieldName " + cond.FieldName + " not found")
+	oldCond, err := GetConditionByName(fieldsMap, query, newCond.FieldName, false)
+	if err != nil {
+		return "", newError("Condition with passed name " + newCond.FieldName + " not found")
 	}
 
-	var logicOpIndex int
-	for fieldIndex > logicOpIndex && logicOpIndex != -1 {
-		logicOpIndex = strings.IndexAny(queryBlocks[0], strings.Join(logicOpeatorsList, ""))
+	var oldCondString string
+	if oldCond.IsBracket {
+		oldCondString = "(" + oldCond.FieldName + oldCond.Operator + fmt.Sprintf("%v", oldCond.Value) + ")"
+	} else {
+		oldCondString = oldCond.FieldName + oldCond.Operator + fmt.Sprintf("%v", oldCond.Value)
 	}
 
-	/* var logicOpIndex int
-	for fieldIndex > logicOpIndex && logicOpIndex != -1 {
-		logicOpIndex = strings.IndexAny(queryBlocks[0], strings.Join(logicOpeatorsList, ""))
+	var newCondString string
+	if newCond.IsBracket {
+		newCondString = "(" + newCond.FieldName + newCond.Operator + fmt.Sprintf("%v", newCond.Value) + ")"
+	} else {
+		newCondString = newCond.FieldName + newCond.Operator + fmt.Sprintf("%v", newCond.Value)
 	}
-	if logicOpIndex == -1 {
-		queryBlocks[1] = 
-	} */
 
-	return strings.Join(queryBlocks, "?"), nil
+	replacer := strings.NewReplacer(oldCondString, newCondString)
+	return replacer.Replace(query), nil
 }
 
 // AddQueryRestrictions adds restrictions to query restrictions block instead of current
-// If argument is not passed, query saves current parameter 
+// If argument is not passed, query saves current parameter
 func AddQueryRestrictions(query string, sortField string, sortOrder string, limit string, offset string) (string, error) {
 	if query == "" {
 		return query, newError("Passed empty query for forming restrictions block")
@@ -329,11 +332,11 @@ func AddQueryRestrictions(query string, sortField string, sortOrder string, limi
 		currentRests[3] = offset
 	}
 	queryBlocks[2] = strings.Join(currentRests, ",")
-	
+
 	return strings.Join(queryBlocks, "?"), nil
 }
 
-func extractQueryCondition(fieldsMap map[string]string, cond string) (condExpr *CondExpr, err error) {
+func extractQueryCondition(fieldsMap map[string]string, cond string, toDBFormat bool) (condExpr *CondExpr, err error) {
 	var op string // get condition operator
 	for _, o := range mathOperatorsList {
 		if strings.Contains(cond, o) {
@@ -361,6 +364,16 @@ func extractQueryCondition(fieldsMap map[string]string, cond string) (condExpr *
 	}
 
 	f := strings.Split(cond, op)[0] // handle condition field name
+
+	if !toDBFormat {
+		return &CondExpr{
+			FieldName: f,
+			Operator:  op,
+			Value:     strings.Split(cond, op)[1],
+			IsBracket: isBracket,
+		}, nil
+	}
+
 	fieldName := fieldsMap[f]
 	if fieldName == "" {
 		return nil, newError("Passed unexpected field name in condition - " + f)
@@ -372,4 +385,26 @@ func extractQueryCondition(fieldsMap map[string]string, cond string) (condExpr *
 		Value:     strings.Split(cond, op)[1],
 		IsBracket: isBracket,
 	}, nil
+}
+
+type testModel struct {
+	ID      *int64  `json:"ID,omitempty" sql:"id"`
+	Content *string `json:"content,omitempty" sql:"content"`
+	Count   *int    `json:"count,omitempty" sql:"count"`
+	IsBool  *bool   `json:"isBool,omitempty" sql:"is_bool"`
+}
+
+func main() {
+	m := make(map[string]map[string]string, 1)
+	m["v_test"] = FormDinamicModel(reflect.ValueOf(testModel{}))
+
+	newCond := &CondExpr{
+		FieldName: "chego",
+		Operator:  "==",
+		Value:     "hmmm",
+		IsBracket: false,
+	}
+
+	query, err := ReplaceQueryCondition(m["v_test"], "?(chego==interesno)*count==7?", *newCond)
+	log.Print(query, err)
 }
