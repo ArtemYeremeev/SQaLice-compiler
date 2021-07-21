@@ -1,4 +1,4 @@
-package main
+package compiler
 
 import (
 	"reflect"
@@ -23,6 +23,7 @@ var testCompileCases = []struct {
 	// Compile response
 	MainQuery  string
 	CountQuery string
+	Err        error
 }{
 	{ // 1. Test empty params blocks
 		Target:    "v_test",
@@ -160,6 +161,114 @@ var testCompileCases = []struct {
 		MainQuery:  "select q.id, q.content, q.count, q.is_bool from v_test q limit 10 offset 2",
 		CountQuery: "",
 	},
+	{ // 18. Test ERROR empty query
+		Target:    "v_test",
+		Params:    "",
+		WithCount: false,
+
+		MainQuery:  "",
+		CountQuery: "",
+		Err:        newError("Request parameters not passed"),
+	},
+	{ // 19. Test ERROR empty query
+		Target:    "",
+		Params:    "??",
+		WithCount: false,
+
+		MainQuery:  "",
+		CountQuery: "",
+		Err:        newError("Request target not passed"),
+	},
+	{ // 20. Test ERROR unexpected fieldName in select
+		Target:    "v_test",
+		Params:    "randomField??",
+		WithCount: false,
+
+		MainQuery:  "",
+		CountQuery: "",
+		Err:        newError("Passed unexpected field name in select - randomField"),
+	},
+	{ // 21. Test ERROR unexpected fieldName in condition
+		Target:    "v_test",
+		Params:    "?randomField==1?",
+		WithCount: false,
+
+		MainQuery:  "",
+		CountQuery: "",
+		Err:        newError("Passed unexpected field name in condition - randomField"),
+	},
+	{ // 22. Test ERROR unsupported operator in condition
+		Target:    "v_test",
+		Params:    "?randomField*=1?",
+		WithCount: false,
+
+		MainQuery:  "",
+		CountQuery: "",
+		Err:        newError("Unsupported operator in condition - randomField"),
+	},
+	{ // 23. Test ERROR unexpected orderField in rests
+		Target:    "v_test",
+		Params:    "??ID,dasc,10,0",
+		WithCount: false,
+
+		MainQuery:  "",
+		CountQuery: "",
+		Err:        newError("Unexpected selection order - dasc"),
+	},
+	{ // 23. Test ERROR unexpected sort order in rests
+		Target:    "v_test",
+		Params:    "??UD,desc,10,0",
+		WithCount: false,
+
+		MainQuery:  "",
+		CountQuery: "",
+		Err:        newError("Unexpected selection order field - UD"),
+	},
+	{ // 24. Test ERROR unexpected orderField in rests
+		Target:    "v_test",
+		Params:    "??UD,desc,10,0",
+		WithCount: false,
+
+		MainQuery:  "",
+		CountQuery: "",
+		Err:        newError("Unexpected selection order field - UD"),
+	},
+	{ // 25. Test ERROR unexpected limit in rests
+		Target:    "v_test",
+		Params:    "??ID,desc,a,0",
+		WithCount: false,
+
+		MainQuery:  "",
+		CountQuery: "",
+		Err:        newError("Unexpected selection limit - a"),
+	},
+	{ // 26. Test ERROR negative limit in rests
+		Target:    "v_test",
+		Params:    "??ID,desc,-1,0",
+		WithCount: false,
+
+		MainQuery:  "",
+		CountQuery: "",
+		Err:        newError("Invaild negative selection limit - -1"),
+	},
+	{ // 27. Test ERROR unexpected offset in rests
+		Target:    "v_test",
+		Params:    "??ID,desc,10,a",
+		WithCount: false,
+
+		MainQuery:  "",
+		CountQuery: "",
+		Err:        newError("Unexpected selection offset - a"),
+	},
+	{ // 28. Test ERROR negative offset in rests
+		Target:    "v_test",
+		Params:    "??ID,desc,10,-1",
+		WithCount: false,
+
+		MainQuery:  "",
+		CountQuery: "",
+		Err:        newError("Invaild negative selection offset - -1"),
+	},
 }
 
 func TestCompile(t *testing.T) {
@@ -169,8 +278,8 @@ func TestCompile(t *testing.T) {
 	for index, c := range testCompileCases {
 		t.Run(strconv.Itoa(index+1), func(t *testing.T) {
 			mainQuery, countQuery, err := Compile(m, c.Target, c.Params, c.WithCount)
-			if err != nil {
-				t.Errorf("expected err: %v, got: %v", nil, err)
+			if err != nil && err.Error() != c.Err.Error() {
+				t.Errorf("expected err: %v, got: %v", c.Err, err)
 				t.FailNow()
 			}
 

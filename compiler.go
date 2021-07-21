@@ -1,4 +1,4 @@
-package main
+package compiler
 
 import (
 	"regexp"
@@ -25,9 +25,6 @@ var logicalBindings = map[string]string{
 func Compile(modelsMap map[string]map[string]string, target string, params string, withCount bool) (string, string, error) {
 	if params == "" {
 		return "", "", newError("Request parameters not passed")
-	}
-	if target == "" {
-		return "", "", newError("Request target not passed")
 	}
 
 	queryBlocks := strings.Split(params, "?")
@@ -291,7 +288,7 @@ func formCondition(fieldsMap map[string]string, cond string, logicalOperator str
 	}
 
 	if sep == "" {
-		return "", newError("Unsupported operator in condition " + cond)
+		return "", newError("Unsupported operator in condition - " + cond)
 	}
 
 	f := strings.Split(cond, sep)[0]
