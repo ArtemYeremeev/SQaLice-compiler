@@ -1,12 +1,14 @@
 package compiler
 
 import (
+	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
 )
 
 var mathOperatorsList = []string{"==", "!=", "<=", "<", ">=", ">>", ">"}
+var logicOpeatorsList = []string{"*", "||"}
 
 // CondExpr describes structure of query condition
 type CondExpr struct {
@@ -42,7 +44,7 @@ func GetFieldsList(fieldsMap map[string]string, q string) (fieldsList []string, 
 }
 
 // GetConditionsList returns a list of all query conditions in SQL format
-func GetConditionsList(fieldsMap map[string]string, q string) (condExprsList []*CondExpr, err error) {
+func GetConditionsList(fieldsMap map[string]string, q string, toDBFormat bool) (condExprsList []*CondExpr, err error) {
 	if q == "" {
 		return nil, newError("Query string not passed")
 	}
@@ -59,7 +61,7 @@ func GetConditionsList(fieldsMap map[string]string, q string) (condExprsList []*
 			continue
 		}
 
-		expr, err := extractQueryCondition(fieldsMap, cond)
+		expr, err := extractQueryCondition(fieldsMap, cond, toDBFormat)
 		if err != nil {
 			return nil, err
 		}
@@ -71,7 +73,7 @@ func GetConditionsList(fieldsMap map[string]string, q string) (condExprsList []*
 }
 
 // GetConditionByName returns first condition with passed name and operator
-func GetConditionByName(fieldsMap map[string]string, q string, fieldName string) (condExpr *CondExpr, err error) {
+func GetConditionByName(fieldsMap map[string]string, q string, fieldName string, toDBFormat bool) (condExpr *CondExpr, err error) {
 	if q == "" {
 		return nil, newError("Query string not passed")
 	}
@@ -98,7 +100,7 @@ func GetConditionByName(fieldsMap map[string]string, q string, fieldName string)
 			}
 		}
 		if operator == "" {
-			return nil, newError("Unsupported operator in condition " + operator)
+			return nil, newError("Unsupported operator in condition")
 		}
 
 		f := strings.Split(cond, operator)[0]
@@ -106,7 +108,7 @@ func GetConditionByName(fieldsMap map[string]string, q string, fieldName string)
 			continue
 		}
 
-		return extractQueryCondition(fieldsMap, cond)
+		return extractQueryCondition(fieldsMap, cond, toDBFormat)
 	}
 
 	return nil, nil
@@ -202,7 +204,150 @@ func GetOffset(q string) (limit *int, err error) {
 	return &respOffset, nil
 }
 
-func extractQueryCondition(fieldsMap map[string]string, cond string) (condExpr *CondExpr, err error) {
+// AddQueryFieldsToSelect adds fieldsMap JSON or fieldsArray fields in SELECT block,
+// replacing current fields in query if isDeleteCurrent passed as true
+func AddQueryFieldsToSelect(fieldsMap map[string]string, query string, fieldsArray []string, isDeleteCurrent bool) (string, error) {
+	if query == "" {
+		return query, newError("Passed empty query for forming fields block")
+	}
+	queryBlocks := strings.Split(query, "?")
+
+	var selectBlock []string
+	// If fieldsMap passed, check if passed new fiedls correct
+	if fieldsMap != nil {
+		for _, key := range fieldsArray {
+			// If field not found in fieldsMap, skip it
+			if fieldsMap[key] != "" {
+				selectBlock = append(selectBlock, key)
+			}
+		}
+	} else {
+		selectBlock = fieldsArray
+	}
+
+	if isDeleteCurrent {
+		queryBlocks[0] = strings.Join(selectBlock, ",")
+	} else {
+		queryBlocks[0] = queryBlocks[0] + "," + strings.Join(selectBlock, ",")
+	}
+
+	return strings.Join(queryBlocks, "?"), nil
+}
+
+// AddQueryConditions adds conditions to query conditions list with AND separators
+// If isDeleteCurrent argument passed, conds list peplacing current query conditions
+func AddQueryConditions(query string, conds []CondExpr, isDeleteCurrent bool) (string, error) {
+	if query == "" {
+		return query, newError("Passed empty query for forming conditions block")
+	}
+	if conds == nil {
+		return query, nil
+	}
+	queryBlocks := strings.Split(query, "?")
+
+	if isDeleteCurrent {
+		queryBlocks[1] = ""
+	}
+
+	for _, cond := range conds {
+		if cond.FieldName == "" {
+			continue
+		}
+
+		isOperatorCorrect := false
+		for _, key := range mathOperatorsList { // check condition operator
+			if cond.Operator == key {
+				isOperatorCorrect = true
+			}
+		}
+		if !isOperatorCorrect {
+			return query, newError("Passed incorrect operator in query condition - " + cond.Operator)
+		}
+
+		if queryBlocks[1] != "" { // separates conditions with AND logical operator
+			queryBlocks[1] = queryBlocks[1] + "*"
+		}
+		if cond.IsBracket { // handle bracket condition
+			queryBlocks[1] = queryBlocks[1] + "(" + cond.FieldName + cond.Operator + fmt.Sprintf("%v", cond.Value) + ")"
+		} else {
+			queryBlocks[1] = queryBlocks[1] + cond.FieldName + cond.Operator + fmt.Sprintf("%v", cond.Value)
+		}
+	}
+
+	return strings.Join(queryBlocks, "?"), nil
+}
+
+// ReplaceQueryCondition replaces query condition by fieldName
+func ReplaceQueryCondition(fieldsMap map[string]string, query string, newCond CondExpr) (string, error) {
+	if query == "" {
+		return query, newError("Passed empty query for changing condition")
+	}
+
+	oldCond, err := GetConditionByName(fieldsMap, query, newCond.FieldName, false)
+	if err != nil {
+		return "", newError("Condition with passed name " + newCond.FieldName + " not found")
+	}
+	// If condition with passed name not found, exit
+	if oldCond == nil {
+		return query, nil
+	}
+
+	var oldCondString string
+	if oldCond.IsBracket {
+		oldCondString = "(" + oldCond.FieldName + oldCond.Operator + fmt.Sprintf("%v", oldCond.Value) + ")"
+	} else {
+		oldCondString = oldCond.FieldName + oldCond.Operator + fmt.Sprintf("%v", oldCond.Value)
+	}
+
+	var newCondString string
+	if newCond.IsBracket {
+		newCondString = "(" + newCond.FieldName + newCond.Operator + fmt.Sprintf("%v", newCond.Value) + ")"
+	} else {
+		newCondString = newCond.FieldName + newCond.Operator + fmt.Sprintf("%v", newCond.Value)
+	}
+
+	replacer := strings.NewReplacer(oldCondString, newCondString)
+	return replacer.Replace(query), nil
+}
+
+// AddQueryRestrictions adds restrictions to query restrictions block instead of current
+// If argument is not passed, query saves current parameter
+func AddQueryRestrictions(query string, sortField string, sortOrder string, limit string, offset string) (string, error) {
+	if query == "" {
+		return query, newError("Passed empty query for forming restrictions block")
+	}
+	queryBlocks := strings.Split(query, "?")
+
+	// If rests block is empty, imitate block structure
+	var currentRests []string
+	if queryBlocks[2] == "" {
+		currentRests = []string{"", "", "", ""}
+	} else {
+		currentRests = strings.Split(queryBlocks[2], ",")
+	}
+
+	// sortField
+	if sortField != "" {
+		currentRests[0] = sortField
+	}
+	// sortOrder
+	if sortOrder != "" && (sortOrder == "asc" || sortOrder == "desc") {
+		currentRests[1] = sortOrder
+	}
+	// limit
+	if limit != "" && !strings.Contains(limit, "-") {
+		currentRests[2] = limit
+	}
+	// offset
+	if offset != "" && !strings.Contains(offset, "-") {
+		currentRests[3] = offset
+	}
+	queryBlocks[2] = strings.Join(currentRests, ",")
+
+	return strings.Join(queryBlocks, "?"), nil
+}
+
+func extractQueryCondition(fieldsMap map[string]string, cond string, toDBFormat bool) (condExpr *CondExpr, err error) {
 	var op string // get condition operator
 	for _, o := range mathOperatorsList {
 		if strings.Contains(cond, o) {
@@ -230,6 +375,16 @@ func extractQueryCondition(fieldsMap map[string]string, cond string) (condExpr *
 	}
 
 	f := strings.Split(cond, op)[0] // handle condition field name
+
+	if !toDBFormat {
+		return &CondExpr{
+			FieldName: f,
+			Operator:  op,
+			Value:     strings.Split(cond, op)[1],
+			IsBracket: isBracket,
+		}, nil
+	}
+
 	fieldName := fieldsMap[f]
 	if fieldName == "" {
 		return nil, newError("Passed unexpected field name in condition - " + f)

@@ -26,9 +26,6 @@ func Compile(modelsMap map[string]map[string]string, target string, params strin
 	if params == "" {
 		return "", "", newError("Request parameters not passed")
 	}
-	if target == "" {
-		return "", "", newError("Request target not passed")
-	}
 
 	queryBlocks := strings.Split(params, "?")
 	selectBlock, err := combineFields(modelsMap[target], queryBlocks[0])
@@ -291,7 +288,7 @@ func formCondition(fieldsMap map[string]string, cond string, logicalOperator str
 	}
 
 	if sep == "" {
-		return "", newError("Unsupported operator in condition " + cond)
+		return "", newError("Unsupported operator in condition - " + cond)
 	}
 
 	f := strings.Split(cond, sep)[0]
