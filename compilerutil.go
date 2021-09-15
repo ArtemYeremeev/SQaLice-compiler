@@ -3,12 +3,12 @@ package compiler
 import (
 	"errors"
 	"reflect"
-	"strings"
 	"sort"
+	"strings"
 )
 
-// FormDinamicModel forms a model containing fields for building query
-func FormDinamicModel(model reflect.Value) map[string]string {
+// formDinamicModel forms a model containing fields for building query
+func formDinamicModel(model reflect.Value) map[string]string {
 	modelTypes := model.Type()
 
 	fieldsMap := make(map[string]string, model.NumField())
@@ -33,7 +33,7 @@ func newError(errText string) error {
 func sortMap(m map[string]string) []string {
 	var keys []string
 	for k := range m {
-    	keys = append(keys, k)
+		keys = append(keys, k)
 	}
 	sort.Strings(keys)
 	return keys

@@ -1,6 +1,7 @@
 package compiler
 
 import (
+	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
@@ -22,13 +23,16 @@ var logicalBindings = map[string]string{
 }
 
 // Compile assembles a query strings to PG database for main query and count query
-func Compile(modelsMap map[string]map[string]string, target string, params string, withCount bool) (string, string, error) {
+func Compile(model interface{}, target string, params string, withCount bool) (string, string, error) {
 	if params == "" {
 		return "", "", newError("Request parameters not passed")
 	}
 
+	// form fields map with formDinamicModel
+	fieldsMap := formDinamicModel(reflect.ValueOf(model))
+
 	queryBlocks := strings.Split(params, "?")
-	selectBlock, err := combineFields(modelsMap[target], queryBlocks[0])
+	selectBlock, err := combineFields(fieldsMap, queryBlocks[0])
 	if err != nil {
 		return "", "", err
 	}
@@ -38,12 +42,12 @@ func Compile(modelsMap map[string]map[string]string, target string, params strin
 		return "", "", err
 	}
 
-	whereBlock, err := combineConditions(modelsMap[target], queryBlocks[1])
+	whereBlock, err := combineConditions(fieldsMap, queryBlocks[1])
 	if err != nil {
 		return "", "", err
 	}
 
-	limitsBlock, err := combineRestrictions(modelsMap[target], queryBlocks[2])
+	limitsBlock, err := combineRestrictions(fieldsMap, queryBlocks[2])
 	if err != nil {
 		return "", "", err
 	}
@@ -71,6 +75,7 @@ func Compile(modelsMap map[string]map[string]string, target string, params strin
 // combineSelect assembles SELECT query block
 func combineFields(fieldsMap map[string]string, fields string) (string, error) {
 	selectBlock := "select "
+
 	var preparedFields []string
 	if fields == "" { // Request all model fields
 		keys := sortMap(fieldsMap)

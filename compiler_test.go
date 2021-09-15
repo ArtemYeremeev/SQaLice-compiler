@@ -1,7 +1,6 @@
 package compiler
 
 import (
-	"reflect"
 	"strconv"
 	"testing"
 )
@@ -215,7 +214,7 @@ var testCompileCases = []struct {
 		CountQuery: "",
 		Err:        newError("Unexpected selection order - dasc"),
 	},
-	{ // 23. Test ERROR unexpected sort order in rests
+	{ // 24. Test ERROR unexpected sort order in rests
 		Target:    "v_test",
 		Params:    "??UD,desc,10,0",
 		WithCount: false,
@@ -224,7 +223,7 @@ var testCompileCases = []struct {
 		CountQuery: "",
 		Err:        newError("Unexpected selection order field - UD"),
 	},
-	{ // 24. Test ERROR unexpected orderField in rests
+	{ // 25. Test ERROR unexpected orderField in rests
 		Target:    "v_test",
 		Params:    "??UD,desc,10,0",
 		WithCount: false,
@@ -233,7 +232,7 @@ var testCompileCases = []struct {
 		CountQuery: "",
 		Err:        newError("Unexpected selection order field - UD"),
 	},
-	{ // 25. Test ERROR unexpected limit in rests
+	{ // 26. Test ERROR unexpected limit in rests
 		Target:    "v_test",
 		Params:    "??ID,desc,a,0",
 		WithCount: false,
@@ -242,7 +241,7 @@ var testCompileCases = []struct {
 		CountQuery: "",
 		Err:        newError("Unexpected selection limit - a"),
 	},
-	{ // 26. Test ERROR negative limit in rests
+	{ // 27. Test ERROR negative limit in rests
 		Target:    "v_test",
 		Params:    "??ID,desc,-1,0",
 		WithCount: false,
@@ -251,7 +250,7 @@ var testCompileCases = []struct {
 		CountQuery: "",
 		Err:        newError("Invaild negative selection limit - -1"),
 	},
-	{ // 27. Test ERROR unexpected offset in rests
+	{ // 28. Test ERROR unexpected offset in rests
 		Target:    "v_test",
 		Params:    "??ID,desc,10,a",
 		WithCount: false,
@@ -260,7 +259,7 @@ var testCompileCases = []struct {
 		CountQuery: "",
 		Err:        newError("Unexpected selection offset - a"),
 	},
-	{ // 28. Test ERROR negative offset in rests
+	{ // 29. Test ERROR negative offset in rests
 		Target:    "v_test",
 		Params:    "??ID,desc,10,-1",
 		WithCount: false,
@@ -272,12 +271,9 @@ var testCompileCases = []struct {
 }
 
 func TestCompile(t *testing.T) {
-	m := make(map[string]map[string]string, 1)
-	m["v_test"] = FormDinamicModel(reflect.ValueOf(TestModel{}))
-
 	for index, c := range testCompileCases {
 		t.Run(strconv.Itoa(index+1), func(t *testing.T) {
-			mainQuery, countQuery, err := Compile(m, c.Target, c.Params, c.WithCount)
+			mainQuery, countQuery, err := Compile(TestModel{}, c.Target, c.Params, c.WithCount)
 			if err != nil && err.Error() != c.Err.Error() {
 				t.Errorf("expected err: %v, got: %v", c.Err, err)
 				t.FailNow()

@@ -2,13 +2,13 @@ package compiler
 
 import (
 	"fmt"
+	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
 )
 
 var mathOperatorsList = []string{"==", "!=", "<=", "<", ">=", ">>", ">"}
-var logicOpeatorsList = []string{"*", "||"}
 
 // CondExpr describes structure of query condition
 type CondExpr struct {
@@ -19,10 +19,13 @@ type CondExpr struct {
 }
 
 // GetFieldsList returns a list of query fields in SQL format
-func GetFieldsList(fieldsMap map[string]string, q string) (fieldsList []string, err error) {
+func GetFieldsList(model interface{}, q string) (fieldsList []string, err error) {
 	if q == "" {
 		return nil, newError("Query string not passed")
 	}
+
+	// form fields map with formDinamicModel
+	fieldsMap := formDinamicModel(reflect.ValueOf(model))
 
 	fieldsBlock := strings.Split(q, "?")[0]
 	if fieldsBlock == "" { // if fieldsBlock is empty then request all fields
@@ -44,9 +47,15 @@ func GetFieldsList(fieldsMap map[string]string, q string) (fieldsList []string, 
 }
 
 // GetConditionsList returns a list of all query conditions in SQL format
-func GetConditionsList(fieldsMap map[string]string, q string, toDBFormat bool) (condExprsList []*CondExpr, err error) {
+func GetConditionsList(model interface{}, q string, toDBFormat bool) (condExprsList []*CondExpr, err error) {
 	if q == "" {
 		return nil, newError("Query string not passed")
+	}
+
+	// form fields map with formDinamicModel, if its necessary
+	var fieldsMap map[string]string
+	if toDBFormat {
+		fieldsMap = formDinamicModel(reflect.ValueOf(model))
 	}
 
 	condsBlock := strings.Split(q, "?")[1]
@@ -73,12 +82,18 @@ func GetConditionsList(fieldsMap map[string]string, q string, toDBFormat bool) (
 }
 
 // GetConditionByName returns first condition with passed name and operator
-func GetConditionByName(fieldsMap map[string]string, q string, fieldName string, toDBFormat bool) (condExpr *CondExpr, err error) {
+func GetConditionByName(model interface{}, q string, fieldName string, toDBFormat bool) (condExpr *CondExpr, err error) {
 	if q == "" {
 		return nil, newError("Query string not passed")
 	}
 	if fieldName == "" {
 		return nil, newError("Condition field name not passed")
+	}
+
+	// form fields map with formDinamicModel, if its necessary
+	var fieldsMap map[string]string
+	if toDBFormat {
+		fieldsMap = formDinamicModel(reflect.ValueOf(model))
 	}
 
 	condsBlock := strings.Split(q, "?")[1]
@@ -115,10 +130,14 @@ func GetConditionByName(fieldsMap map[string]string, q string, fieldName string,
 }
 
 // GetSortField returns selection sort field from query
-func GetSortField(fieldsMap map[string]string, q string) (field string, err error) {
+func GetSortField(model interface{}, q string) (field string, err error) {
 	if q == "" {
 		return "", newError("Query string not passed")
 	}
+
+	// form fields map with formDinamicModel
+	fieldsMap := formDinamicModel(reflect.ValueOf(model))
+
 	restsBlock := strings.Split(q, "?")[2]
 	if restsBlock == "" { // if condsBlock is empty then sort field not passed
 		return "", nil
@@ -206,11 +225,14 @@ func GetOffset(q string) (limit *int, err error) {
 
 // AddQueryFieldsToSelect adds fieldsMap JSON or fieldsArray fields in SELECT block,
 // replacing current fields in query if isDeleteCurrent passed as true
-func AddQueryFieldsToSelect(fieldsMap map[string]string, query string, fieldsArray []string, isDeleteCurrent bool) (string, error) {
+func AddQueryFieldsToSelect(model interface{}, query string, fieldsArray []string, isDeleteCurrent bool) (string, error) {
 	if query == "" {
 		return query, newError("Passed empty query for forming fields block")
 	}
 	queryBlocks := strings.Split(query, "?")
+
+	// form fields map with formDinamicModel
+	fieldsMap := formDinamicModel(reflect.ValueOf(model))
 
 	var selectBlock []string
 	// If fieldsMap passed, check if passed new fiedls correct
@@ -278,10 +300,13 @@ func AddQueryConditions(query string, conds []CondExpr, isDeleteCurrent bool) (s
 }
 
 // ReplaceQueryCondition replaces query condition by fieldName
-func ReplaceQueryCondition(fieldsMap map[string]string, query string, newCond CondExpr) (string, error) {
+func ReplaceQueryCondition(model interface{}, query string, newCond CondExpr) (string, error) {
 	if query == "" {
 		return query, newError("Passed empty query for changing condition")
 	}
+
+	// form fields map with formDinamicModel
+	fieldsMap := formDinamicModel(reflect.ValueOf(model))
 
 	oldCond, err := GetConditionByName(fieldsMap, query, newCond.FieldName, false)
 	if err != nil {
