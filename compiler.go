@@ -1,6 +1,7 @@
 package compiler
 
 import (
+	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
@@ -22,13 +23,16 @@ var logicalBindings = map[string]string{
 }
 
 // Compile assembles a query strings to PG database for main query and count query
-func Compile(modelsMap map[string]map[string]string, target string, params string, withCount bool) (string, string, error) {
+func Compile(model interface{}, target string, params string, withCount bool) (string, string, error) {
 	if params == "" {
 		return "", "", newError("Request parameters not passed")
 	}
 
+	// form fields map with formDinamicModel
+	fieldsMap := formDinamicModel(reflect.ValueOf(model))
+
 	queryBlocks := strings.Split(params, "?")
-	selectBlock, err := combineFields(modelsMap[target], queryBlocks[0])
+	selectBlock, err := combineFields(fieldsMap, queryBlocks[0])
 	if err != nil {
 		return "", "", err
 	}
@@ -38,12 +42,12 @@ func Compile(modelsMap map[string]map[string]string, target string, params strin
 		return "", "", err
 	}
 
-	whereBlock, err := combineConditions(modelsMap[target], queryBlocks[1])
+	whereBlock, err := combineConditions(fieldsMap, queryBlocks[1])
 	if err != nil {
 		return "", "", err
 	}
 
-	limitsBlock, err := combineRestrictions(modelsMap[target], queryBlocks[2])
+	limitsBlock, err := combineRestrictions(fieldsMap, queryBlocks[2])
 	if err != nil {
 		return "", "", err
 	}
@@ -69,8 +73,12 @@ func Compile(modelsMap map[string]map[string]string, target string, params strin
 }
 
 // combineSelect assembles SELECT query block
-func combineFields(fieldsMap map[string]string, fields string) (string, error) {
+func combineFields(model interface{}, fields string) (string, error) {
 	selectBlock := "select "
+	
+	// form fields map with formDinamicModel
+	fieldsMap := formDinamicModel(reflect.ValueOf(model))
+
 	var preparedFields []string
 	if fields == "" { // Request all model fields
 		keys := sortMap(fieldsMap)
@@ -105,10 +113,13 @@ func combineTarget(target string) (string, error) {
 }
 
 // combineConditions assembles WHERE query block
-func combineConditions(fieldsMap map[string]string, conds string) (string, error) {
+func combineConditions(model interface{}, conds string) (string, error) {
 	if conds == "" {
 		return "", nil
 	}
+
+	// form fields map with formDinamicModel
+	fieldsMap := formDinamicModel(reflect.ValueOf(model))
 
 	whereBlock := "where "
 	var preparedConditions []string
@@ -172,12 +183,15 @@ func combineConditions(fieldsMap map[string]string, conds string) (string, error
 }
 
 // combineRestrictions assembles selection parameters
-func combineRestrictions(fieldsMap map[string]string, rests string) (string, error) {
+func combineRestrictions(model interface{}, rests string) (string, error) {
 	if rests == "" {
 		return "", nil
 	}
 	restsArray := strings.Split(rests, ",")
 	restsBlock := ""
+
+	// form fields map with formDinamicModel
+	fieldsMap := formDinamicModel(reflect.ValueOf(model))
 
 	// field
 	field := restsArray[0]
@@ -242,9 +256,12 @@ func combineRestrictions(fieldsMap map[string]string, rests string) (string, err
 	return restsBlock, nil
 }
 
-func handleConditionsSet(fieldsMap map[string]string, condSet string) (string, string, error) {
+func handleConditionsSet(model interface{}, condSet string) (string, string, error) {
 	var cond string
 	var err error
+
+	// form fields map with formDinamicModel
+	fieldsMap := formDinamicModel(reflect.ValueOf(model))
 
 	orIndex := strings.Index(condSet, "||")
 	andIndex := strings.Index(condSet, "*")
@@ -271,7 +288,10 @@ func handleConditionsSet(fieldsMap map[string]string, condSet string) (string, s
 	return condSet, cond, nil
 }
 
-func formCondition(fieldsMap map[string]string, cond string, logicalOperator string) (string, error) {
+func formCondition(model interface{}, cond string, logicalOperator string) (string, error) {
+	// form fields map with formDinamicModel
+	fieldsMap := formDinamicModel(reflect.ValueOf(model))
+
 	var sep string
 	for queryOp := range operatorBindings { // Check is condition legal
 		if strings.Contains(cond, queryOp) {
