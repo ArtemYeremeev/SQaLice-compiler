@@ -2,7 +2,6 @@ package compiler
 
 import (
 	"fmt"
-	"reflect"
 	"strconv"
 	"testing"
 )
@@ -43,12 +42,9 @@ var testGetFieldsListCases = []struct {
 }
 
 func TestGetFieldsList(t *testing.T) {
-	m := make(map[string]map[string]string, 1)
-	m["v_test"] = formDinamicModel(reflect.ValueOf(TestModel{}))
-
 	for index, c := range testGetFieldsListCases {
 		t.Run(strconv.Itoa(index+1), func(t *testing.T) {
-			fieldsList, err := GetFieldsList(m["v_test"], c.Query)
+			fieldsList, err := GetFieldsList(TestModel{}, c.Query)
 			if err != nil && err.Error() != c.Err.Error() {
 				t.Errorf("expected err: %v, got: %v", c.Err, err)
 				t.FailNow()
@@ -111,12 +107,9 @@ var testGetConditionsListCases = []struct {
 }
 
 func TestGetConditionsList(t *testing.T) {
-	m := make(map[string]map[string]string, 1)
-	m["v_test"] = formDinamicModel(reflect.ValueOf(TestModel{}))
-
 	for index, c := range testGetConditionsListCases {
 		t.Run(strconv.Itoa(index+1), func(t *testing.T) {
-			condsList, err := GetConditionsList(m["v_test"], c.Query, true)
+			condsList, err := GetConditionsList(TestModel{}, c.Query, true)
 			if err != nil && c.Err.Error() != err.Error() {
 				t.Errorf("expected err: %v, got: %v", c.Err, err)
 				t.FailNow()
@@ -194,12 +187,9 @@ var testGetConditionByNameCases = []struct {
 }
 
 func TestGetConditionByName(t *testing.T) {
-	m := make(map[string]map[string]string, 1)
-	m["v_test"] = formDinamicModel(reflect.ValueOf(TestModel{}))
-
 	for index, c := range testGetConditionByNameCases {
 		t.Run(strconv.Itoa(index+1), func(t *testing.T) {
-			cond, err := GetConditionByName(m["v_test"], c.Query, c.FieldName, true)
+			cond, err := GetConditionByName(TestModel{}, c.Query, c.FieldName, true)
 			if err != nil && c.Err.Error() != err.Error() {
 				t.Errorf("expected err: %v, got: %v", c.Err, err)
 				t.FailNow()
@@ -256,12 +246,9 @@ var testGetRestsCases = []struct {
 }
 
 func TestGetSortField(t *testing.T) {
-	m := make(map[string]map[string]string, 1)
-	m["v_test"] = formDinamicModel(reflect.ValueOf(TestModel{}))
-
 	for index, c := range testGetRestsCases {
 		t.Run(strconv.Itoa(index+1), func(t *testing.T) {
-			field, err := GetSortField(m["v_test"], c.Query)
+			field, err := GetSortField(TestModel{}, c.Query)
 			if err != nil && c.Err.Error() != err.Error() {
 				t.Errorf("expected err: %v, got: %v", c.Err, err)
 				t.FailNow()
@@ -370,12 +357,9 @@ var testAddQueryFieldsToSelectCases = []struct {
 }
 
 func TestAddQueryFieldsToSelect(t *testing.T) {
-	m := make(map[string]map[string]string, 1)
-	m["v_test"] = formDinamicModel(reflect.ValueOf(TestModel{}))
-
 	for index, c := range testAddQueryFieldsToSelectCases {
 		t.Run(strconv.Itoa(index+1), func(t *testing.T) {
-			respQuery, err := AddQueryFieldsToSelect(m["v_test"], c.Query, c.NewFields, c.isDeleteCurrent)
+			respQuery, err := AddQueryFieldsToSelect(TestModel{}, c.Query, c.NewFields, c.isDeleteCurrent)
 			if err != nil {
 				t.Errorf("expected err: %v, got: %v", nil, err)
 				t.FailNow()
@@ -473,9 +457,6 @@ var testAddQueryConditionsCases = []struct {
 }
 
 func TestAddQueryConditions(t *testing.T) {
-	m := make(map[string]map[string]string, 1)
-	m["v_test"] = formDinamicModel(reflect.ValueOf(TestModel{}))
-
 	for index, c := range testAddQueryConditionsCases {
 		t.Run(strconv.Itoa(index+1), func(t *testing.T) {
 			respQuery, err := AddQueryConditions(c.Query, c.NewConds, c.IsDeleteCurrent)
@@ -532,12 +513,9 @@ var testReplaceQueryConditionCases = []struct {
 }
 
 func TestReplaceQueryCondition(t *testing.T) {
-	m := make(map[string]map[string]string, 1)
-	m["v_test"] = formDinamicModel(reflect.ValueOf(TestModel{}))
-
 	for index, c := range testReplaceQueryConditionCases {
 		t.Run(strconv.Itoa(index+1), func(t *testing.T) {
-			respQuery, err := ReplaceQueryCondition(m["v_test"], c.Query, c.NewCond)
+			respQuery, err := ReplaceQueryCondition(TestModel{}, c.Query, c.NewCond)
 			if err != nil {
 				t.Errorf("expected err: %v, got: %v", nil, err)
 				t.FailNow()
@@ -597,9 +575,6 @@ var testAddQueryRestrictionsCases = []struct {
 }
 
 func TestAddQueryRestrictions(t *testing.T) {
-	m := make(map[string]map[string]string, 1)
-	m["v_test"] = formDinamicModel(reflect.ValueOf(TestModel{}))
-
 	for index, c := range testAddQueryRestrictionsCases {
 		t.Run(strconv.Itoa(index+1), func(t *testing.T) {
 			respQuery, err := AddQueryRestrictions(c.Query, c.SortField, c.SortOrder, c.Limit, c.Offset)

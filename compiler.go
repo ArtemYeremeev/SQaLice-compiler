@@ -73,11 +73,8 @@ func Compile(model interface{}, target string, params string, withCount bool) (s
 }
 
 // combineSelect assembles SELECT query block
-func combineFields(model interface{}, fields string) (string, error) {
+func combineFields(fieldsMap map[string]string, fields string) (string, error) {
 	selectBlock := "select "
-	
-	// form fields map with formDinamicModel
-	fieldsMap := formDinamicModel(reflect.ValueOf(model))
 
 	var preparedFields []string
 	if fields == "" { // Request all model fields
@@ -113,13 +110,10 @@ func combineTarget(target string) (string, error) {
 }
 
 // combineConditions assembles WHERE query block
-func combineConditions(model interface{}, conds string) (string, error) {
+func combineConditions(fieldsMap map[string]string, conds string) (string, error) {
 	if conds == "" {
 		return "", nil
 	}
-
-	// form fields map with formDinamicModel
-	fieldsMap := formDinamicModel(reflect.ValueOf(model))
 
 	whereBlock := "where "
 	var preparedConditions []string
@@ -183,15 +177,12 @@ func combineConditions(model interface{}, conds string) (string, error) {
 }
 
 // combineRestrictions assembles selection parameters
-func combineRestrictions(model interface{}, rests string) (string, error) {
+func combineRestrictions(fieldsMap map[string]string, rests string) (string, error) {
 	if rests == "" {
 		return "", nil
 	}
 	restsArray := strings.Split(rests, ",")
 	restsBlock := ""
-
-	// form fields map with formDinamicModel
-	fieldsMap := formDinamicModel(reflect.ValueOf(model))
 
 	// field
 	field := restsArray[0]
@@ -256,12 +247,9 @@ func combineRestrictions(model interface{}, rests string) (string, error) {
 	return restsBlock, nil
 }
 
-func handleConditionsSet(model interface{}, condSet string) (string, string, error) {
+func handleConditionsSet(fieldsMap map[string]string, condSet string) (string, string, error) {
 	var cond string
 	var err error
-
-	// form fields map with formDinamicModel
-	fieldsMap := formDinamicModel(reflect.ValueOf(model))
 
 	orIndex := strings.Index(condSet, "||")
 	andIndex := strings.Index(condSet, "*")
@@ -288,10 +276,7 @@ func handleConditionsSet(model interface{}, condSet string) (string, string, err
 	return condSet, cond, nil
 }
 
-func formCondition(model interface{}, cond string, logicalOperator string) (string, error) {
-	// form fields map with formDinamicModel
-	fieldsMap := formDinamicModel(reflect.ValueOf(model))
-
+func formCondition(fieldsMap map[string]string, cond string, logicalOperator string) (string, error) {
 	var sep string
 	for queryOp := range operatorBindings { // Check is condition legal
 		if strings.Contains(cond, queryOp) {

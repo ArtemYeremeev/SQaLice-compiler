@@ -1,7 +1,6 @@
 package compiler
 
 import (
-	"reflect"
 	"strconv"
 	"testing"
 )
@@ -272,12 +271,9 @@ var testCompileCases = []struct {
 }
 
 func TestCompile(t *testing.T) {
-	m := make(map[string]map[string]string, 1)
-	m["v_test"] = formDinamicModel(reflect.ValueOf(TestModel{}))
-
 	for index, c := range testCompileCases {
 		t.Run(strconv.Itoa(index+1), func(t *testing.T) {
-			mainQuery, countQuery, err := Compile(m, c.Target, c.Params, c.WithCount)
+			mainQuery, countQuery, err := Compile(TestModel{}, c.Target, c.Params, c.WithCount)
 			if err != nil && err.Error() != c.Err.Error() {
 				t.Errorf("expected err: %v, got: %v", c.Err, err)
 				t.FailNow()
