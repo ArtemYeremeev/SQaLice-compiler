@@ -10,6 +10,12 @@ type TestModel struct {
 	Content *string `json:"content,omitempty" sql:"content"`
 	Count   *int    `json:"count,omitempty" sql:"count"`
 	IsBool  *bool   `json:"isBool,omitempty" sql:"is_bool"`
+	TestNestedModel
+}
+
+type TestNestedModel struct {
+	ExtraField   *string `json:"extraField,omitempty" sql:"extra_field"`
+	OneMoreField *bool   `json:"oneMoreField,omitempty" sql:"one_more_field"`
 }
 
 var testCompileCases = []struct {
@@ -29,8 +35,8 @@ var testCompileCases = []struct {
 		Params:    "??",
 		WithCount: true,
 
-		MainQuery:  "select q.id, q.content, q.count, q.is_bool from v_test q",
-		CountQuery: "select count(*) from (select q.id, q.content, q.count, q.is_bool from v_test q) q",
+		MainQuery:  "select q.id, q.content, q.count, q.extra_field, q.is_bool, q.one_more_field from v_test q",
+		CountQuery: "select count(*) from (select q.id, q.content, q.count, q.extra_field, q.is_bool, q.one_more_field from v_test q) q",
 	},
 	{ // 2. Test fields params block with 1 field
 		Target:    "v_test",
@@ -50,18 +56,18 @@ var testCompileCases = []struct {
 	},
 	{ // 4. Test conditions params block with 1 condition
 		Target:    "v_test",
-		Params:    "?ID==1?",
+		Params:    "ID?ID==1?",
 		WithCount: false,
 
-		MainQuery:  "select q.id, q.content, q.count, q.is_bool from v_test q where q.id = 1",
+		MainQuery:  "select q.id from v_test q where q.id = 1",
 		CountQuery: "",
 	},
 	{ // 5. Test conditions params block with 1 non-bracket conditionsSet
 		Target:    "v_test",
-		Params:    "?ID==1*ID==3?",
+		Params:    "content?ID==1*ID==3?",
 		WithCount: false,
 
-		MainQuery:  "select q.id, q.content, q.count, q.is_bool from v_test q where q.id = 1 and q.id = 3",
+		MainQuery:  "select q.content from v_test q where q.id = 1 and q.id = 3",
 		CountQuery: "",
 	},
 	{ // 6. Test conditions params block with 1 bracket conditionsSet
@@ -106,10 +112,10 @@ var testCompileCases = []struct {
 	},
 	{ // 11. Test conditions params block with 1 non-bracket array conditionsSet
 		Target:    "v_test",
-		Params:    "?ID==1,2,test1*content==test2,true?",
+		Params:    "count?ID==1,2,test1*content==test2,true?",
 		WithCount: false,
 
-		MainQuery:  "select q.id, q.content, q.count, q.is_bool from v_test q where q.id = any(array[1,2,'test1']) and q.content = any(array['test2',true])",
+		MainQuery:  "select q.count from v_test q where q.id = any(array[1,2,'test1']) and q.content = any(array['test2',true])",
 		CountQuery: "",
 	},
 	{ // 12 Test conditions params block with OVERLAPS operator and single value
@@ -154,10 +160,10 @@ var testCompileCases = []struct {
 	},
 	{ // 17. Test restrictions params block with limit and offset
 		Target:    "v_test",
-		Params:    "??,,10,2",
+		Params:    "ID??,,10,2",
 		WithCount: false,
 
-		MainQuery:  "select q.id, q.content, q.count, q.is_bool from v_test q limit 10 offset 2",
+		MainQuery:  "select q.id from v_test q limit 10 offset 2",
 		CountQuery: "",
 	},
 	{ // 18. Test ERROR empty query

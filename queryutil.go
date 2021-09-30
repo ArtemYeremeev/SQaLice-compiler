@@ -2,7 +2,6 @@ package compiler
 
 import (
 	"fmt"
-	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
@@ -25,7 +24,7 @@ func GetFieldsList(model interface{}, q string) (fieldsList []string, err error)
 	}
 
 	// form fields map with formDinamicModel
-	fieldsMap := formDinamicModel(reflect.ValueOf(model))
+	fieldsMap := formDinamicModel(model)
 
 	fieldsBlock := strings.Split(q, "?")[0]
 	if fieldsBlock == "" { // if fieldsBlock is empty then request all fields
@@ -55,7 +54,7 @@ func GetConditionsList(model interface{}, q string, toDBFormat bool) (condExprsL
 	// form fields map with formDinamicModel, if its necessary
 	var fieldsMap map[string]string
 	if toDBFormat {
-		fieldsMap = formDinamicModel(reflect.ValueOf(model))
+		fieldsMap = formDinamicModel(model)
 	}
 
 	condsBlock := strings.Split(q, "?")[1]
@@ -93,7 +92,7 @@ func GetConditionByName(model interface{}, q string, fieldName string, toDBForma
 	// form fields map with formDinamicModel, if its necessary
 	var fieldsMap map[string]string
 	if toDBFormat {
-		fieldsMap = formDinamicModel(reflect.ValueOf(model))
+		fieldsMap = formDinamicModel(model)
 	}
 
 	condsBlock := strings.Split(q, "?")[1]
@@ -136,7 +135,7 @@ func GetSortField(model interface{}, q string) (field string, err error) {
 	}
 
 	// form fields map with formDinamicModel
-	fieldsMap := formDinamicModel(reflect.ValueOf(model))
+	fieldsMap := formDinamicModel(model)
 
 	restsBlock := strings.Split(q, "?")[2]
 	if restsBlock == "" { // if condsBlock is empty then sort field not passed
@@ -232,7 +231,7 @@ func AddQueryFieldsToSelect(model interface{}, query string, fieldsArray []strin
 	queryBlocks := strings.Split(query, "?")
 
 	// form fields map with formDinamicModel
-	fieldsMap := formDinamicModel(reflect.ValueOf(model))
+	fieldsMap := formDinamicModel(model)
 
 	var selectBlock []string
 	// If fieldsMap passed, check if passed new fiedls correct
@@ -306,7 +305,7 @@ func ReplaceQueryCondition(model interface{}, query string, newCond CondExpr) (s
 	}
 
 	// form fields map with formDinamicModel
-	fieldsMap := formDinamicModel(reflect.ValueOf(model))
+	fieldsMap := formDinamicModel(model)
 
 	oldCond, err := GetConditionByName(fieldsMap, query, newCond.FieldName, false)
 	if err != nil {
