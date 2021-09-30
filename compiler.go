@@ -1,7 +1,6 @@
 package compiler
 
 import (
-	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
@@ -29,7 +28,7 @@ func Compile(model interface{}, target string, params string, withCount bool) (s
 	}
 
 	// form fields map with formDinamicModel
-	fieldsMap := formDinamicModel(reflect.ValueOf(model))
+	fieldsMap := formDinamicModel(model)
 
 	queryBlocks := strings.Split(params, "?")
 	selectBlock, err := combineFields(fieldsMap, queryBlocks[0])

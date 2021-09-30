@@ -8,11 +8,20 @@ import (
 )
 
 // formDinamicModel forms a model containing fields for building query
-func formDinamicModel(model reflect.Value) map[string]string {
-	modelTypes := model.Type()
+func formDinamicModel(model interface{}) map[string]string {
+	reflectModel := reflect.ValueOf(model)
+	modelTypes := reflectModel.Type()
 
-	fieldsMap := make(map[string]string, model.NumField())
-	for i := 0; i < model.NumField(); i++ { // json tag: sql tag
+	fieldsMap := make(map[string]string, reflectModel.NumField())
+	for i := 0; i < reflectModel.NumField(); i++ { // json tag: sql tag
+		if modelTypes.Field(i).Type.Kind() == reflect.Struct { // handle nested struct
+			nestedFields := formDinamicModel(reflectModel.Field(i).Interface())
+			for k, v := range nestedFields { // merge nestedFields into main map
+				fieldsMap[k] = v
+			}
+			continue
+		}
+
 		fieldsMap[strings.TrimSuffix(modelTypes.Field(i).Tag.Get("json"), ",omitempty")] = modelTypes.Field(i).Tag.Get("sql")
 	}
 
@@ -30,6 +39,7 @@ func newError(errText string) error {
 	return errors.New("[SQaLice] " + errText)
 }
 
+// sortMap sorts map elements in alphabetic order
 func sortMap(m map[string]string) []string {
 	var keys []string
 	for k := range m {
