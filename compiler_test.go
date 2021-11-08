@@ -173,7 +173,7 @@ var testGetCases = []struct {
 
 		MainQuery:  "",
 		CountQuery: "",
-		Err:        newError("Request parameters not passed"),
+		Err:        newError("Request parameters is not passed"),
 	},
 	{ // 19. Test ERROR empty query
 		Target:    "",
@@ -352,12 +352,23 @@ var testSearchCases = []struct {
 	{ // 5. Test search query with complex compilation block
 		Target:    "v_test",
 		Params:    "ID?(content==something)*extraField!=anything?ID,desc,5,0",
-		WithCount: true ,
+		WithCount: true,
 		SearchField: "extraField",
 		SearchQuery: "ok",
 
 		MainQuery:  "select q.id from v_test q where q.extra_field::text like '%%ok%%' and (q.content = 'something') and q.extra_field != 'anything' order by q.id desc limit 5 offset 0",
 		CountQuery: "select count(*) from (select 1 from v_test q where q.extra_field::text like '%%ok%%' and (q.content = 'something') and q.extra_field != 'anything') q",
+	},
+	{ // 6. Test search query with wrong field name
+		Target:    "v_test",
+		Params:    "ID??",
+		WithCount: true,
+		SearchField: "extra_Field",
+		SearchQuery: "ok",
+
+		MainQuery:  "",
+		CountQuery: "",
+		Err: newError("Passed unexpected field name in search condition - extra_Field"),
 	},
 }
 

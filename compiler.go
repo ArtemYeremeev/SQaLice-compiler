@@ -129,7 +129,7 @@ func combineConditions(fieldsMap map[string]string, conds string, searchField st
 	if searchField != "" {
 		f := fieldsMap[searchField]
 		if f == "" {
-			return "", newError("Passed unexpected field name in search condition")
+			return "", newError("Passed unexpected field name in search condition - " + searchField)
 		}
 
 		whereBlock = whereBlock+ "q."+f+`::text like '%%`+strings.ToLower(searchQuery)+`%%' `
