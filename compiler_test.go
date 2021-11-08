@@ -18,14 +18,14 @@ type TestNestedModel struct {
 	OneMoreField *bool   `json:"oneMoreField,omitempty" sql:"one_more_field"`
 }
 
-var testCompileCases = []struct {
-	// Compile params
+var testGetCases = []struct {
+	// Get params
 	ModelsMap map[string]map[string]string
 	Target    string
 	Params    string
 	WithCount bool
 
-	// Compile response
+	// Get response
 	MainQuery  string
 	CountQuery string
 	Err        error
@@ -36,7 +36,7 @@ var testCompileCases = []struct {
 		WithCount: true,
 
 		MainQuery:  "select q.id, q.content, q.count, q.extra_field, q.is_bool, q.one_more_field from v_test q",
-		CountQuery: "select count(*) from (select q.id, q.content, q.count, q.extra_field, q.is_bool, q.one_more_field from v_test q) q",
+		CountQuery: "select count(*) from (select 1 from v_test q) q",
 	},
 	{ // 2. Test fields params block with 1 field
 		Target:    "v_test",
@@ -44,7 +44,7 @@ var testCompileCases = []struct {
 		WithCount: true,
 
 		MainQuery:  "select q.id from v_test q",
-		CountQuery: "select count(*) from (select q.id from v_test q) q",
+		CountQuery: "select count(*) from (select 1 from v_test q) q",
 	},
 	{ // 3. Test fields params block with 3 fields
 		Target:    "v_test",
@@ -52,7 +52,7 @@ var testCompileCases = []struct {
 		WithCount: true,
 
 		MainQuery:  "select q.id, q.content, q.count from v_test q",
-		CountQuery: "select count(*) from (select q.id, q.content, q.count from v_test q) q",
+		CountQuery: "select count(*) from (select 1 from v_test q) q",
 	},
 	{ // 4. Test conditions params block with 1 condition
 		Target:    "v_test",
@@ -124,7 +124,7 @@ var testCompileCases = []struct {
 		WithCount: true,
 
 		MainQuery:  "select q.id from v_test q where q.content && array['value']",
-		CountQuery: "select count(*) from (select q.id from v_test q where q.content && array['value']) q",
+		CountQuery: "select count(*) from (select 1 from v_test q where q.content && array['value']) q",
 	},
 	{ // 13 Test conditions params block with OVERLAPS operator and muliple values
 		Target:    "v_test",
@@ -132,7 +132,7 @@ var testCompileCases = []struct {
 		WithCount: true,
 
 		MainQuery:  "select q.id, q.count from v_test q where q.content && array['value1','value2',true,14] and q.id = 25 limit 10 offset 0",
-		CountQuery: "select count(*) from (select q.id, q.count from v_test q where q.content && array['value1','value2',true,14] and q.id = 25) q",
+		CountQuery: "select count(*) from (select 1 from v_test q where q.content && array['value1','value2',true,14] and q.id = 25) q",
 	},
 	{ // 14. Test restrictions params block with all restrictions
 		Target:    "v_test",
@@ -148,7 +148,7 @@ var testCompileCases = []struct {
 		WithCount: false,
 
 		MainQuery:  "select q.id from v_test q order by q.id",
-		CountQuery: "select count(*) from (select q.id from v_test q order by q.id) q",
+		CountQuery: "select count(*) from (select 1 from v_test q order by q.id) q",
 	},
 	{ // 16. Test restrictions params block with limit
 		Target:    "v_test",
@@ -276,10 +276,95 @@ var testCompileCases = []struct {
 	},
 }
 
-func TestCompile(t *testing.T) {
-	for index, c := range testCompileCases {
+func TestGet(t *testing.T) {
+	for index, c := range testGetCases {
 		t.Run(strconv.Itoa(index+1), func(t *testing.T) {
-			mainQuery, countQuery, err := Compile(TestModel{}, c.Target, c.Params, c.WithCount)
+			mainQuery, countQuery, err := Get(TestModel{}, c.Target, c.Params, c.WithCount)
+			if err != nil && err.Error() != c.Err.Error() {
+				t.Errorf("expected err: %v, got: %v", c.Err, err)
+				t.FailNow()
+			}
+
+			if mainQuery != c.MainQuery {
+				t.Errorf("expected: %v, got: %v", c.MainQuery, mainQuery)
+				t.Fail()
+			}
+			if c.WithCount && countQuery != c.CountQuery {
+				t.Errorf("expected: %v, got: %v", c.CountQuery, countQuery)
+				t.Fail()
+			}
+		})
+	}
+}
+
+var testSearchCases = []struct {
+	// Search params
+	ModelsMap map[string]map[string]string
+	Target      string
+	Params      string
+	WithCount   bool
+	SearchField string
+	SearchQuery string
+
+	// Search response
+	MainQuery  string
+	CountQuery string
+	Err        error
+}{
+	{ // 1. Test empty query and search blocks
+		Target:    "v_test",
+		Params:    "??",
+		WithCount: true,
+
+		MainQuery:  "select q.id, q.content, q.count, q.extra_field, q.is_bool, q.one_more_field from v_test q",
+		CountQuery: "select count(*) from (select 1 from v_test q) q",
+	},
+	{ // 2. Test empty query params block and string params search
+		Target:    "v_test",
+		Params:    "??",
+		WithCount: true,
+		SearchField: "content",
+		SearchQuery: "something",
+
+		MainQuery:  "select q.id, q.content, q.count, q.extra_field, q.is_bool, q.one_more_field from v_test q where q.content::text like '%%something%%'",
+		CountQuery: "select count(*) from (select 1 from v_test q where q.content::text like '%%something%%') q",
+	},
+	{ // 3. Test search query with select block
+		Target:    "v_test",
+		Params:    "ID,content,count??",
+		WithCount: true,
+		SearchField: "ID",
+		SearchQuery: "123",
+
+		MainQuery:  "select q.id, q.content, q.count from v_test q where q.id::text like '%%123%%'",
+		CountQuery: "select count(*) from (select 1 from v_test q where q.id::text like '%%123%%') q",
+	},
+	{ // 4. Test search query with select and conditions block
+		Target:    "v_test",
+		Params:    "isBool?ID==1?",
+		WithCount: true,
+		SearchField: "extraField",
+		SearchQuery: "ok",
+
+		MainQuery:  "select q.is_bool from v_test q where q.extra_field::text like '%%ok%%' and q.id = 1",
+		CountQuery: "select count(*) from (select 1 from v_test q where q.extra_field::text like '%%ok%%' and q.id = 1) q",
+	},
+	{ // 5. Test search query with complex compilation block
+		Target:    "v_test",
+		Params:    "ID?(content==something)*extraField!=anything?ID,desc,5,0",
+		WithCount: true ,
+		SearchField: "extraField",
+		SearchQuery: "ok",
+
+		MainQuery:  "select q.id from v_test q where q.extra_field::text like '%%ok%%' and (q.content = 'something') and q.extra_field != 'anything' order by q.id desc limit 5 offset 0",
+		CountQuery: "select count(*) from (select 1 from v_test q where q.extra_field::text like '%%ok%%' and (q.content = 'something') and q.extra_field != 'anything') q",
+	},
+}
+
+func TestSearch(t *testing.T) {
+	for index, c := range testSearchCases {
+		t.Run(strconv.Itoa(index+1), func(t *testing.T) {
+			mainQuery, countQuery, err := Search(TestModel{}, c.Target, c.Params, c.WithCount, c.SearchField, c.SearchQuery)
 			if err != nil && err.Error() != c.Err.Error() {
 				t.Errorf("expected err: %v, got: %v", c.Err, err)
 				t.FailNow()

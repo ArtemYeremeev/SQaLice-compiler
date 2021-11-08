@@ -21,10 +21,20 @@ var logicalBindings = map[string]string{
 	"||": "or",  // OR
 }
 
-// Compile assembles a query strings to PG database for main query and count query
-func Compile(model interface{}, target string, params string, withCount bool) (string, string, error) {
+// Get builds a GET query with parameters
+func Get(model interface{}, target string, params string, withCount bool) (string, string, error) {
+	return compile(model, target, params, withCount, "", "")
+}
+
+// Search builds a GET query with LIKE filter on searchField
+func Search(model interface{}, target string, params string, withCount bool, searchField string, searchQuery string) (string, string, error) {
+	return compile(model, target, params, withCount, searchField, searchQuery)
+}
+
+// compile assembles a query strings to PG database for main query and count query
+func compile(model interface{}, target string, params string, withCount bool, searchField string, searchQuery string) (string, string, error) {
 	if params == "" {
-		return "", "", newError("Request parameters not passed")
+		return "", "", newError("Request parameters is not passed")
 	}
 
 	// form fields map with formDinamicModel
@@ -41,7 +51,7 @@ func Compile(model interface{}, target string, params string, withCount bool) (s
 		return "", "", err
 	}
 
-	whereBlock, err := combineConditions(fieldsMap, queryBlocks[1])
+	whereBlock, err := combineConditions(fieldsMap, queryBlocks[1], searchField, searchQuery)
 	if err != nil {
 		return "", "", err
 	}
@@ -64,7 +74,7 @@ func Compile(model interface{}, target string, params string, withCount bool) (s
 	var countQuery string
 	mainQuery := strings.Join(respArray, " ")
 	if withCount { // compile query to get count of result rows
-		q := strings.TrimSpace(strings.Join([]string{selectBlock, fromBlock, whereBlock}, " "))
+		q := strings.TrimSpace(strings.Join([]string{"select 1", fromBlock, whereBlock}, " "))
 		countQuery = "select count(*) from (" + q + ") q"
 	}
 
@@ -109,28 +119,36 @@ func combineTarget(target string) (string, error) {
 }
 
 // combineConditions assembles WHERE query block
-func combineConditions(fieldsMap map[string]string, conds string) (string, error) {
-	if conds == "" {
+func combineConditions(fieldsMap map[string]string, conds string, searchField string, searchQuery string) (string, error) {
+	if conds == "" && searchField == "" {
 		return "", nil
 	}
 
 	whereBlock := "where "
-	var preparedConditions []string
+	// searchField handling
+	if searchField != "" {
+		f := fieldsMap[searchField]
+		if f == "" {
+			return "", newError("Passed unexpected field name in search condition")
+		}
+
+		whereBlock = whereBlock+ "q."+f+`::text like '%%`+strings.ToLower(searchQuery)+`%%' `
+		if conds != "" {
+			whereBlock = whereBlock + "and "
+		}
+	}
 
 	// Parse logical operators
 	// Get substrings with bracket conditions
 	re := regexp.MustCompile(`\((.*?)\)`)
 	bracketSubstrings := re.FindAllString(conds, -1)
+	var preparedConditions []string
 	for _, brCondSet := range bracketSubstrings {
 		condSet := brCondSet
-
 		condSet = strings.Trim(condSet, "(")
 		condSet = strings.Trim(condSet, ")")
 
-		var cond string
-		var err error
-
-		var bracketConditions []string
+		var (bracketConditions []string; cond string; err error)
 		opCount := strings.Count(condSet, "*") + strings.Count(condSet, "||")
 		for i := 0; i <= opCount; i++ { // loop number of logical operators in condition set
 			condSet, cond, err = handleConditionsSet(fieldsMap, condSet)
@@ -141,7 +159,7 @@ func combineConditions(fieldsMap map[string]string, conds string) (string, error
 		}
 		conds = strings.TrimPrefix(conds, brCondSet)
 
-		// Handle trailimg logical operator
+		// Handle trailing logical operator
 		orIndex := strings.Index(conds, "||")
 		andIndex := strings.Index(conds, "*")
 
@@ -290,7 +308,6 @@ func formCondition(fieldsMap map[string]string, cond string, logicalOperator str
 			break
 		}
 	}
-
 	if sep == "" {
 		return "", newError("Unsupported operator in condition - " + cond)
 	}
