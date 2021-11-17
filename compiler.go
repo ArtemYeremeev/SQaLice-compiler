@@ -320,7 +320,7 @@ func formSearchConditions(fieldsMap map[string]string, params string) (string, e
 			return "", newError("Passed unexpected field name in search condition - " + condParts[0])
 		}
 
-		resultBlock = resultBlock + "q." + f + `::text like '%%` + strings.ToLower(condParts[1]) + `%%'`
+		resultBlock = resultBlock + "lower(q." + f + `::text) like '%` + strings.ToLower(condParts[1]) + `%'`
 	}
 
 	return resultBlock + ") ", nil

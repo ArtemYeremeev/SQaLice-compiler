@@ -299,7 +299,7 @@ func TestGet(t *testing.T) {
 
 var testSearchCases = []struct {
 	// Search params
-	ModelsMap map[string]map[string]string
+	ModelsMap    map[string]map[string]string
 	Target       string
 	Params       string
 	WithCount    bool
@@ -324,8 +324,8 @@ var testSearchCases = []struct {
 		WithCount:    true,
 		SearchParams: "content~~something",
 
-		MainQuery:  "select q.id, q.content, q.count, q.extra_field, q.is_bool, q.one_more_field from v_test q where (q.content::text like '%%something%%')",
-		CountQuery: "select count(*) from (select 1 from v_test q where (q.content::text like '%%something%%')) q",
+		MainQuery:  "select q.id, q.content, q.count, q.extra_field, q.is_bool, q.one_more_field from v_test q where (lower(q.content::text) like '%something%')",
+		CountQuery: "select count(*) from (select 1 from v_test q where (lower(q.content::text) like '%something%')) q",
 	},
 	{ // 3. Test search query with select block
 		Target:       "v_test",
@@ -333,8 +333,8 @@ var testSearchCases = []struct {
 		WithCount:    true,
 		SearchParams: "ID~~123",
 
-		MainQuery:  "select q.id, q.content, q.count from v_test q where (q.id::text like '%%123%%')",
-		CountQuery: "select count(*) from (select 1 from v_test q where (q.id::text like '%%123%%')) q",
+		MainQuery:  "select q.id, q.content, q.count from v_test q where (lower(q.id::text) like '%123%')",
+		CountQuery: "select count(*) from (select 1 from v_test q where (lower(q.id::text) like '%123%')) q",
 	},
 	{ // 4. Test search query with select and conditions block
 		Target:       "v_test",
@@ -342,8 +342,8 @@ var testSearchCases = []struct {
 		WithCount:    true,
 		SearchParams: "extraField~~ok",
 
-		MainQuery:  "select q.is_bool from v_test q where (q.extra_field::text like '%%ok%%') and q.id = 1",
-		CountQuery: "select count(*) from (select 1 from v_test q where (q.extra_field::text like '%%ok%%') and q.id = 1) q",
+		MainQuery:  "select q.is_bool from v_test q where (lower(q.extra_field::text) like '%ok%') and q.id = 1",
+		CountQuery: "select count(*) from (select 1 from v_test q where (lower(q.extra_field::text) like '%ok%') and q.id = 1) q",
 	},
 	{ // 5. Test search query with complex compilation block
 		Target:       "v_test",
@@ -351,53 +351,53 @@ var testSearchCases = []struct {
 		WithCount:    true,
 		SearchParams: "extraField~~ok",
 
-		MainQuery:  "select q.id from v_test q where (q.extra_field::text like '%%ok%%') and (q.content = 'something') and q.extra_field != 'anything' order by q.id desc limit 5 offset 0",
-		CountQuery: "select count(*) from (select 1 from v_test q where (q.extra_field::text like '%%ok%%') and (q.content = 'something') and q.extra_field != 'anything') q",
+		MainQuery:  "select q.id from v_test q where (lower(q.extra_field::text) like '%ok%') and (q.content = 'something') and q.extra_field != 'anything' order by q.id desc limit 5 offset 0",
+		CountQuery: "select count(*) from (select 1 from v_test q where (lower(q.extra_field::text) like '%ok%') and (q.content = 'something') and q.extra_field != 'anything') q",
 	},
 	{ // 6. Test search query with wrong field name
-		Target:    "v_test",
-		Params:    "ID??",
-		WithCount: true,
+		Target:       "v_test",
+		Params:       "ID??",
+		WithCount:    true,
 		SearchParams: "extra_Field~~ok",
 
 		MainQuery:  "",
 		CountQuery: "",
-		Err: newError("Passed unexpected field name in search condition - extra_Field"),
+		Err:        newError("Passed unexpected field name in search condition - extra_Field"),
 	},
 	{ // 7. Test search query with multiple conditions in search block and emtpy main block
-		Target: "v_test",
-		Params: "ID??ID,,,",
-		WithCount: false,
+		Target:       "v_test",
+		Params:       "ID??ID,,,",
+		WithCount:    false,
 		SearchParams: "extraField~~ok||content~~something||content~~anything",
 
-		MainQuery: "select q.id from v_test q where (q.extra_field::text like '%%ok%%' or q.content::text like '%%something%%' or q.content::text like '%%anything%%') order by q.id",
+		MainQuery:  "select q.id from v_test q where (lower(q.extra_field::text) like '%ok%' or lower(q.content::text) like '%something%' or lower(q.content::text) like '%anything%') order by q.id",
 		CountQuery: "",
 	},
 	{ // 8. Test search query with multiple conditions in search block and single main condition
-		Target: "v_test",
-		Params: "ID?isBool==true?",
-		WithCount: false,
+		Target:       "v_test",
+		Params:       "ID?isBool==true?",
+		WithCount:    false,
 		SearchParams: "extraField~~ok||content~~something||content~~anything",
 
-		MainQuery: "select q.id from v_test q where (q.extra_field::text like '%%ok%%' or q.content::text like '%%something%%' or q.content::text like '%%anything%%') and q.is_bool = true",
+		MainQuery:  "select q.id from v_test q where (lower(q.extra_field::text) like '%ok%' or lower(q.content::text) like '%something%' or lower(q.content::text) like '%anything%') and q.is_bool = true",
 		CountQuery: "",
 	},
 	{ // 9. Test search query with multiple conditions in search block and complex main conditions block
-		Target: "v_test",
-		Params: "ID?isBool==true||content==anything?",
-		WithCount: false,
+		Target:       "v_test",
+		Params:       "ID?isBool==true||content==anything?",
+		WithCount:    false,
 		SearchParams: "extraField~~any||content~~something||content~~nothing",
 
-		MainQuery: "select q.id from v_test q where (q.extra_field::text like '%%any%%' or q.content::text like '%%something%%' or q.content::text like '%%nothing%%') and q.is_bool = true or q.content = 'anything'",
+		MainQuery:  "select q.id from v_test q where (lower(q.extra_field::text) like '%any%' or lower(q.content::text) like '%something%' or lower(q.content::text) like '%nothing%') and q.is_bool = true or q.content = 'anything'",
 		CountQuery: "",
 	},
 	{ // 10. Test search query with multiple conditions in search block and complex main query
-		Target: "v_test",
-		Params: "ID,isBool?isBool==true||content==anything?ID,desc,10,0",
-		WithCount: false,
+		Target:       "v_test",
+		Params:       "ID,isBool?isBool==true||content==anything?ID,desc,10,0",
+		WithCount:    false,
 		SearchParams: "extraField~~any",
 
-		MainQuery: "select q.id, q.is_bool from v_test q where (q.extra_field::text like '%%any%%') and q.is_bool = true or q.content = 'anything' order by q.id desc limit 10 offset 0",
+		MainQuery:  "select q.id, q.is_bool from v_test q where (lower(q.extra_field::text) like '%any%') and q.is_bool = true or q.content = 'anything' order by q.id desc limit 10 offset 0",
 		CountQuery: "",
 	},
 }
