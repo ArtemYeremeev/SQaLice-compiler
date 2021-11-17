@@ -300,11 +300,10 @@ func TestGet(t *testing.T) {
 var testSearchCases = []struct {
 	// Search params
 	ModelsMap map[string]map[string]string
-	Target      string
-	Params      string
-	WithCount   bool
-	SearchField string
-	SearchQuery string
+	Target       string
+	Params       string
+	WithCount    bool
+	SearchParams string
 
 	// Search response
 	MainQuery  string
@@ -320,62 +319,93 @@ var testSearchCases = []struct {
 		CountQuery: "select count(*) from (select 1 from v_test q) q",
 	},
 	{ // 2. Test empty query params block and string params search
-		Target:    "v_test",
-		Params:    "??",
-		WithCount: true,
-		SearchField: "content",
-		SearchQuery: "something",
+		Target:       "v_test",
+		Params:       "??",
+		WithCount:    true,
+		SearchParams: "content~~something",
 
-		MainQuery:  "select q.id, q.content, q.count, q.extra_field, q.is_bool, q.one_more_field from v_test q where q.content::text like '%%something%%'",
-		CountQuery: "select count(*) from (select 1 from v_test q where q.content::text like '%%something%%') q",
+		MainQuery:  "select q.id, q.content, q.count, q.extra_field, q.is_bool, q.one_more_field from v_test q where (q.content::text like '%%something%%')",
+		CountQuery: "select count(*) from (select 1 from v_test q where (q.content::text like '%%something%%')) q",
 	},
 	{ // 3. Test search query with select block
-		Target:    "v_test",
-		Params:    "ID,content,count??",
-		WithCount: true,
-		SearchField: "ID",
-		SearchQuery: "123",
+		Target:       "v_test",
+		Params:       "ID,content,count??",
+		WithCount:    true,
+		SearchParams: "ID~~123",
 
-		MainQuery:  "select q.id, q.content, q.count from v_test q where q.id::text like '%%123%%'",
-		CountQuery: "select count(*) from (select 1 from v_test q where q.id::text like '%%123%%') q",
+		MainQuery:  "select q.id, q.content, q.count from v_test q where (q.id::text like '%%123%%')",
+		CountQuery: "select count(*) from (select 1 from v_test q where (q.id::text like '%%123%%')) q",
 	},
 	{ // 4. Test search query with select and conditions block
-		Target:    "v_test",
-		Params:    "isBool?ID==1?",
-		WithCount: true,
-		SearchField: "extraField",
-		SearchQuery: "ok",
+		Target:       "v_test",
+		Params:       "isBool?ID==1?",
+		WithCount:    true,
+		SearchParams: "extraField~~ok",
 
-		MainQuery:  "select q.is_bool from v_test q where q.extra_field::text like '%%ok%%' and q.id = 1",
-		CountQuery: "select count(*) from (select 1 from v_test q where q.extra_field::text like '%%ok%%' and q.id = 1) q",
+		MainQuery:  "select q.is_bool from v_test q where (q.extra_field::text like '%%ok%%') and q.id = 1",
+		CountQuery: "select count(*) from (select 1 from v_test q where (q.extra_field::text like '%%ok%%') and q.id = 1) q",
 	},
 	{ // 5. Test search query with complex compilation block
-		Target:    "v_test",
-		Params:    "ID?(content==something)*extraField!=anything?ID,desc,5,0",
-		WithCount: true,
-		SearchField: "extraField",
-		SearchQuery: "ok",
+		Target:       "v_test",
+		Params:       "ID?(content==something)*extraField!=anything?ID,desc,5,0",
+		WithCount:    true,
+		SearchParams: "extraField~~ok",
 
-		MainQuery:  "select q.id from v_test q where q.extra_field::text like '%%ok%%' and (q.content = 'something') and q.extra_field != 'anything' order by q.id desc limit 5 offset 0",
-		CountQuery: "select count(*) from (select 1 from v_test q where q.extra_field::text like '%%ok%%' and (q.content = 'something') and q.extra_field != 'anything') q",
+		MainQuery:  "select q.id from v_test q where (q.extra_field::text like '%%ok%%') and (q.content = 'something') and q.extra_field != 'anything' order by q.id desc limit 5 offset 0",
+		CountQuery: "select count(*) from (select 1 from v_test q where (q.extra_field::text like '%%ok%%') and (q.content = 'something') and q.extra_field != 'anything') q",
 	},
 	{ // 6. Test search query with wrong field name
 		Target:    "v_test",
 		Params:    "ID??",
 		WithCount: true,
-		SearchField: "extra_Field",
-		SearchQuery: "ok",
+		SearchParams: "extra_Field~~ok",
 
 		MainQuery:  "",
 		CountQuery: "",
 		Err: newError("Passed unexpected field name in search condition - extra_Field"),
+	},
+	{ // 7. Test search query with multiple conditions in search block and emtpy main block
+		Target: "v_test",
+		Params: "ID??ID,,,",
+		WithCount: false,
+		SearchParams: "extraField~~ok||content~~something||content~~anything",
+
+		MainQuery: "select q.id from v_test q where (q.extra_field::text like '%%ok%%' or q.content::text like '%%something%%' or q.content::text like '%%anything%%') order by q.id",
+		CountQuery: "",
+	},
+	{ // 8. Test search query with multiple conditions in search block and single main condition
+		Target: "v_test",
+		Params: "ID?isBool==true?",
+		WithCount: false,
+		SearchParams: "extraField~~ok||content~~something||content~~anything",
+
+		MainQuery: "select q.id from v_test q where (q.extra_field::text like '%%ok%%' or q.content::text like '%%something%%' or q.content::text like '%%anything%%') and q.is_bool = true",
+		CountQuery: "",
+	},
+	{ // 9. Test search query with multiple conditions in search block and complex main conditions block
+		Target: "v_test",
+		Params: "ID?isBool==true||content==anything?",
+		WithCount: false,
+		SearchParams: "extraField~~any||content~~something||content~~nothing",
+
+		MainQuery: "select q.id from v_test q where (q.extra_field::text like '%%any%%' or q.content::text like '%%something%%' or q.content::text like '%%nothing%%') and q.is_bool = true or q.content = 'anything'",
+		CountQuery: "",
+	},
+	{ // 10. Test search query with multiple conditions in search block and complex main query
+		Target: "v_test",
+		Params: "ID,isBool?isBool==true||content==anything?ID,desc,10,0",
+		WithCount: false,
+		SearchParams: "extraField~~any",
+
+		MainQuery: "select q.id, q.is_bool from v_test q where (q.extra_field::text like '%%any%%') and q.is_bool = true or q.content = 'anything' order by q.id desc limit 10 offset 0",
+		CountQuery: "",
 	},
 }
 
 func TestSearch(t *testing.T) {
 	for index, c := range testSearchCases {
 		t.Run(strconv.Itoa(index+1), func(t *testing.T) {
-			mainQuery, countQuery, err := Search(TestModel{}, c.Target, c.Params, c.WithCount, c.SearchField, c.SearchQuery)
+			mainQuery, countQuery, err := Search(TestModel{}, c.Target, c.Params, c.WithCount, c.SearchParams)
 			if err != nil && err.Error() != c.Err.Error() {
 				t.Errorf("expected err: %v, got: %v", c.Err, err)
 				t.FailNow()

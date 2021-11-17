@@ -23,16 +23,16 @@ var logicalBindings = map[string]string{
 
 // Get builds a GET query with parameters
 func Get(model interface{}, target string, params string, withCount bool) (string, string, error) {
-	return compile(model, target, params, withCount, "", "")
+	return compile(model, target, params, withCount, "")
 }
 
 // Search builds a GET query with LIKE filter on searchField
-func Search(model interface{}, target string, params string, withCount bool, searchField string, searchQuery string) (string, string, error) {
-	return compile(model, target, params, withCount, searchField, searchQuery)
+func Search(model interface{}, target string, params string, withCount bool, searchParams string) (string, string, error) {
+	return compile(model, target, params, withCount, searchParams)
 }
 
 // compile assembles a query strings to PG database for main query and count query
-func compile(model interface{}, target string, params string, withCount bool, searchField string, searchQuery string) (string, string, error) {
+func compile(model interface{}, target string, params string, withCount bool, searchParams string) (string, string, error) {
 	if params == "" {
 		return "", "", newError("Request parameters is not passed")
 	}
@@ -51,7 +51,7 @@ func compile(model interface{}, target string, params string, withCount bool, se
 		return "", "", err
 	}
 
-	whereBlock, err := combineConditions(fieldsMap, queryBlocks[1], searchField, searchQuery)
+	whereBlock, err := combineConditions(fieldsMap, queryBlocks[1], searchParams)
 	if err != nil {
 		return "", "", err
 	}
@@ -119,22 +119,22 @@ func combineTarget(target string) (string, error) {
 }
 
 // combineConditions assembles WHERE query block
-func combineConditions(fieldsMap map[string]string, conds string, searchField string, searchQuery string) (string, error) {
-	if conds == "" && searchField == "" {
+func combineConditions(fieldsMap map[string]string, conds string, searchParams string) (string, error) {
+	if conds == "" && searchParams == "" {
 		return "", nil
 	}
 
 	whereBlock := "where "
-	// searchField handling
-	if searchField != "" {
-		f := fieldsMap[searchField]
-		if f == "" {
-			return "", newError("Passed unexpected field name in search condition - " + searchField)
+	// searchQuery handling
+	if searchParams != "" {
+		searchConds, err := formSearchConditions(fieldsMap, searchParams)
+		if err != nil {
+			return "", err
 		}
-
-		whereBlock = whereBlock+ "q."+f+`::text like '%%`+strings.ToLower(searchQuery)+`%%' `
-		if conds != "" {
-			whereBlock = whereBlock + "and "
+		if searchConds != "" && conds != "" {
+			whereBlock = whereBlock + searchConds + "and "
+		} else if searchConds != "" {
+			whereBlock = whereBlock + searchConds
 		}
 	}
 
@@ -148,7 +148,11 @@ func combineConditions(fieldsMap map[string]string, conds string, searchField st
 		condSet = strings.Trim(condSet, "(")
 		condSet = strings.Trim(condSet, ")")
 
-		var (bracketConditions []string; cond string; err error)
+		var (
+			bracketConditions []string
+			cond              string
+			err               error
+		)
 		opCount := strings.Count(condSet, "*") + strings.Count(condSet, "||")
 		for i := 0; i <= opCount; i++ { // loop number of logical operators in condition set
 			condSet, cond, err = handleConditionsSet(fieldsMap, condSet)
@@ -293,6 +297,36 @@ func handleConditionsSet(fieldsMap map[string]string, condSet string) (string, s
 	return condSet, cond, nil
 }
 
+// formSearchConditions builds a conditions block with LIKE operator for search
+func formSearchConditions(fieldsMap map[string]string, params string) (string, error) {
+	condArr := strings.Split(params, "||") // Split by OR operator
+	if condArr == nil {
+		return "", newError("Passed empty search block")
+	}
+
+	resultBlock := "("
+	for i, c := range condArr {
+		if i != 0 { // Adds logical delimiter between search conditions
+			resultBlock = resultBlock + " or "
+		}
+
+		condParts := strings.Split(c, "~~")
+		if condParts == nil {
+			continue
+		}
+
+		f := fieldsMap[condParts[0]]
+		if f == "" {
+			return "", newError("Passed unexpected field name in search condition - " + condParts[0])
+		}
+
+		resultBlock = resultBlock + "q." + f + `::text like '%%` + strings.ToLower(condParts[1]) + `%%'`
+	}
+
+	return resultBlock + ") ", nil
+}
+
+// formCondition builds condition with standart operator
 func formCondition(fieldsMap map[string]string, cond string, logicalOperator string) (string, error) {
 	var sep string
 	for queryOp := range operatorBindings { // Check is condition legal
