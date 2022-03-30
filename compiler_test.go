@@ -400,6 +400,15 @@ var testSearchCases = []struct {
 		MainQuery:  "select q.id, q.is_bool from v_test q where (lower(q.extra_field::text) like '%any%') and q.is_bool = true or q.content = 'anything' order by q.id desc limit 10 offset 0",
 		CountQuery: "",
 	},
+	{ // 11. Test search query bracket block
+		Target:       "v_test",
+		Params:       "ID??",
+		WithCount:    false,
+		SearchParams: "extraField~~ok||(content~~1&&content~~2)",
+
+		MainQuery:  "select q.id from v_test q where ((lower(q.extra_field::text) like '%ok%' or (lower(q.content::text) like '%1%' and lower(q.content::text) like '%2%'))",
+		CountQuery: "",
+	},
 }
 
 func TestSearch(t *testing.T) {

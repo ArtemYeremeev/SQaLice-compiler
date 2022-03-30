@@ -310,17 +310,26 @@ func formSearchConditions(fieldsMap map[string]string, params string) (string, e
 			resultBlock = resultBlock + " or "
 		}
 
+		var opBracket, clBracket string
+		if c[0:1] == "(" { // Handle bracket opening
+			opBracket = "("
+			c = c[1:]
+		}
+		if c[len(c)-1:] == ")" { // Handle bracket closure
+			clBracket = ")"
+			c = c[:len(c)-1]
+		}
+
 		condParts := strings.Split(c, "~~")
 		if condParts == nil {
 			continue
 		}
-
 		f := fieldsMap[condParts[0]]
 		if f == "" {
 			return "", newError("Passed unexpected field name in search condition - " + condParts[0])
 		}
 
-		resultBlock = resultBlock + "lower(q." + f + `::text) like '%` + strings.ToLower(condParts[1]) + `%'`
+		resultBlock = resultBlock + opBracket + "lower(q." + f + `::text) like '%` + strings.ToLower(condParts[1]) + `%'` + clBracket
 	}
 
 	return resultBlock + ") ", nil
