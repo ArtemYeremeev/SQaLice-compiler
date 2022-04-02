@@ -404,9 +404,18 @@ var testSearchCases = []struct {
 		Target:       "v_test",
 		Params:       "ID??",
 		WithCount:    false,
-		SearchParams: "extraField~~ok||(content~~1&&content~~2)",
+		SearchParams: "(content~~1||content~~2)*extraField~~ok",
 
-		MainQuery:  "select q.id from v_test q where ((lower(q.extra_field::text) like '%ok%' or (lower(q.content::text) like '%1%' and lower(q.content::text) like '%2%'))",
+		MainQuery:  "select q.id from v_test q where ((lower(q.content::text) like '%1%' or lower(q.content::text) like '%2%') and lower(q.extra_field::text) like '%ok%')",
+		CountQuery: "",
+	},
+	{ // 12. Test searchQuery with two bracket blocks
+		Target:       "v_test",
+		Params:       "ID,content,extraField??ID,desc,,",
+		WithCount:    false,
+		SearchParams: "(content~~1||content~~2)*(extraField~~some||extraField~~any)",
+
+		MainQuery:  "select q.id, q.content, q.extra_field from v_test q where ((lower(q.content::text) like '%1%' or lower(q.content::text) like '%2%') and (lower(q.extra_field::text) like '%some%' or lower(q.extra_field::text) like '%any%')) order by q.id desc",
 		CountQuery: "",
 	},
 }

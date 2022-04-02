@@ -138,60 +138,10 @@ func combineConditions(fieldsMap map[string]string, conds string, searchParams s
 		}
 	}
 
-	// Parse logical operators
-	// Get substrings with bracket conditions
-	re := regexp.MustCompile(`\((.*?)\)`)
-	bracketSubstrings := re.FindAllString(conds, -1)
-	var preparedConditions []string
-	for _, brCondSet := range bracketSubstrings {
-		condSet := brCondSet
-		condSet = strings.Trim(condSet, "(")
-		condSet = strings.Trim(condSet, ")")
-
-		var (
-			bracketConditions []string
-			cond              string
-			err               error
-		)
-		opCount := strings.Count(condSet, "*") + strings.Count(condSet, "||")
-		for i := 0; i <= opCount; i++ { // loop number of logical operators in condition set
-			condSet, cond, err = handleConditionsSet(fieldsMap, condSet)
-			if err != nil {
-				return "", err
-			}
-			bracketConditions = append(bracketConditions, cond)
-		}
-		conds = strings.TrimPrefix(conds, brCondSet)
-
-		// Handle trailing logical operator
-		orIndex := strings.Index(conds, "||")
-		andIndex := strings.Index(conds, "*")
-
-		op := ""
-		if (orIndex < 0 || andIndex < orIndex) && andIndex >= 0 { // handle AND logical condition
-			op = "*"
-		}
-		if (andIndex < 0 || orIndex < andIndex) && orIndex >= 0 { // handle OR logical condition
-			op = "||"
-		}
-		if op != "" {
-			conds = strings.TrimPrefix(conds, op)
-		}
-
-		preparedConditions = append(preparedConditions, "("+strings.Join(bracketConditions, " ")+") "+logicalBindings[op])
-	}
-
-	var cond string
-	var err error
-	opCount := strings.Count(conds, "*") + strings.Count(conds, "||")
-	if conds != "" { // handle non-bracket conditions set
-		for i := 0; i <= opCount; i++ { // loop number of logical operators in condition set
-			conds, cond, err = handleConditionsSet(fieldsMap, conds)
-			if err != nil {
-				return "", err
-			}
-			preparedConditions = append(preparedConditions, cond)
-		}
+	// standart conditions block handling
+	preparedConditions, err := extractConditionsSet(fieldsMap, conds, false)
+	if err != nil {
+		return "", err
 	}
 
 	return whereBlock + strings.Join(preparedConditions, " "), nil
@@ -268,7 +218,79 @@ func combineRestrictions(fieldsMap map[string]string, rests string) (string, err
 	return restsBlock, nil
 }
 
-func handleConditionsSet(fieldsMap map[string]string, condSet string) (string, string, error) {
+// formSearchConditions builds a conditions block with LIKE operator for search
+func formSearchConditions(fieldsMap map[string]string, params string) (string, error) {
+	preparedConditions, err := extractConditionsSet(fieldsMap, params, true)
+	if err != nil {
+		return "", err
+	}
+
+	return "(" + strings.Join(preparedConditions, " ") + ") ", nil
+}
+
+func extractConditionsSet(fieldsMap map[string]string, conds string, isSearch bool) ([]string, error) {
+	// Parse logical operators
+	bracketSubstrings := regexp.MustCompile(`\((.*?)\)`).FindAllString(conds, -1)
+	var preparedConditions []string
+	for _, brCondSet := range bracketSubstrings {
+		condSet := brCondSet
+		condSet = strings.Trim(condSet, "(")
+		condSet = strings.Trim(condSet, ")")
+
+		var (
+			bracketConditions []string
+			cond              string
+			err               error
+		)
+		opCount := strings.Count(condSet, "*") + strings.Count(condSet, "||")
+		for i := 0; i <= opCount; i++ { // loop number of logical operators in condition set
+			condSet, cond, err = handleConditionsSet(fieldsMap, condSet, isSearch)
+			if err != nil {
+				return nil, err
+			}
+			bracketConditions = append(bracketConditions, cond)
+		}
+		conds = strings.TrimPrefix(conds, brCondSet)
+
+		// Handle trailing logical operator
+		orIndex := strings.Index(conds, "||")
+		andIndex := strings.Index(conds, "*")
+
+		op := ""
+		if (orIndex < 0 || andIndex < orIndex) && andIndex >= 0 { // handle AND logical condition
+			op = "*"
+		}
+		if (andIndex < 0 || orIndex < andIndex) && orIndex >= 0 { // handle OR logical condition
+			op = "||"
+		}
+		if op != "" {
+			conds = strings.TrimPrefix(conds, op)
+		}
+
+		brCondSet := "(" + strings.Join(bracketConditions, " ") + ")"
+		if op != "" {
+			brCondSet = brCondSet + " " + logicalBindings[op]
+		}
+		preparedConditions = append(preparedConditions, brCondSet)
+	}
+
+	var cond string
+	var err error
+	opCount := strings.Count(conds, "*") + strings.Count(conds, "||")
+	if conds != "" { // handle non-bracket conditions set
+		for i := 0; i <= opCount; i++ { // loop number of logical operators in condition set
+			conds, cond, err = handleConditionsSet(fieldsMap, conds, isSearch)
+			if err != nil {
+				return nil, err
+			}
+			preparedConditions = append(preparedConditions, cond)
+		}
+	}
+
+	return preparedConditions, nil
+}
+
+func handleConditionsSet(fieldsMap map[string]string, condSet string, isSearch bool) (string, string, error) {
 	var cond string
 	var err error
 
@@ -276,18 +298,18 @@ func handleConditionsSet(fieldsMap map[string]string, condSet string) (string, s
 	andIndex := strings.Index(condSet, "*")
 
 	if orIndex < 0 && andIndex < 0 { // no logical condition
-		cond, err = formCondition(fieldsMap, condSet, "")
+		cond, err = formCondition(fieldsMap, condSet, "", isSearch)
 		if err != nil {
 			return "", "", err
 		}
 	} else if orIndex < 0 || (andIndex < orIndex && andIndex >= 0) { // handle AND logical condition
-		cond, err = formCondition(fieldsMap, condSet[:strings.Index(condSet, "*")], "*")
+		cond, err = formCondition(fieldsMap, condSet[:strings.Index(condSet, "*")], "*", isSearch)
 		if err != nil {
 			return "", "", err
 		}
 		condSet = strings.TrimPrefix(condSet, condSet[:strings.Index(condSet, "*")]+"*")
 	} else { // handle OR logical condition
-		cond, err = formCondition(fieldsMap, condSet[:strings.Index(condSet, "||")], "||")
+		cond, err = formCondition(fieldsMap, condSet[:strings.Index(condSet, "||")], "||", isSearch)
 		if err != nil {
 			return "", "", err
 		}
@@ -297,48 +319,26 @@ func handleConditionsSet(fieldsMap map[string]string, condSet string) (string, s
 	return condSet, cond, nil
 }
 
-// formSearchConditions builds a conditions block with LIKE operator for search
-func formSearchConditions(fieldsMap map[string]string, params string) (string, error) {
-	condArr := strings.Split(params, "||") // Split by OR operator
-	if condArr == nil {
-		return "", newError("Passed empty search block")
-	}
-
-	resultBlock := "("
-	for i, c := range condArr {
-		if i != 0 { // Adds logical delimiter between search conditions
-			resultBlock = resultBlock + " or "
-		}
-
-		var opBracket, clBracket string
-		if c[0:1] == "(" { // Handle bracket opening
-			opBracket = "("
-			c = c[1:]
-		}
-		if c[len(c)-1:] == ")" { // Handle bracket closure
-			clBracket = ")"
-			c = c[:len(c)-1]
-		}
-
-		condParts := strings.Split(c, "~~")
+// formCondition builds condition with standart operator
+func formCondition(fieldsMap map[string]string, cond string, logicalOperator string, isSearch bool) (string, error) {
+	if isSearch { // handle search condition
+		condParts := strings.Split(cond, "~~")
 		if condParts == nil {
-			continue
+			return "", nil
 		}
 		f := fieldsMap[condParts[0]]
 		if f == "" {
 			return "", newError("Passed unexpected field name in search condition - " + condParts[0])
 		}
+		if logicalOperator != "" {
+			return "lower(q." + f + `::text) like '%` + strings.ToLower(condParts[1]) + `%'` + " " + logicalBindings[logicalOperator], nil
+		}
 
-		resultBlock = resultBlock + opBracket + "lower(q." + f + `::text) like '%` + strings.ToLower(condParts[1]) + `%'` + clBracket
+		return "lower(q." + f + `::text) like '%` + strings.ToLower(condParts[1]) + `%'`, nil
 	}
 
-	return resultBlock + ") ", nil
-}
-
-// formCondition builds condition with standart operator
-func formCondition(fieldsMap map[string]string, cond string, logicalOperator string) (string, error) {
 	var sep string
-	for queryOp := range operatorBindings { // Check is condition legal
+	for queryOp := range operatorBindings { // check is condition legal
 		if strings.Contains(cond, queryOp) {
 			sep = queryOp
 		}
