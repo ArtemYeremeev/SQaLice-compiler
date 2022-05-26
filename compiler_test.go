@@ -274,6 +274,23 @@ var testGetCases = []struct {
 		CountQuery: "",
 		Err:        newError("Invaild negative selection offset - -1"),
 	},
+	{ // 30. Test array condition with NOT EQUALS operator
+		Target:    "v_test",
+		Params:    "ID?ID!=test1,test2?",
+		WithCount: false,
+
+		MainQuery:  "select q.id from v_test q where not q.id = any(array['test1','test2'])",
+		CountQuery: "",
+	},
+	{ // 31. Test array condition with unexpected operator
+		Target:    "v_test",
+		Params:    "content?ID<=test1,test2?",
+		WithCount: false,
+
+		MainQuery:  "",
+		CountQuery: "",
+		Err:        newError("Passed unexpected operator in array condition - <="),
+	},
 }
 
 func TestGet(t *testing.T) {

@@ -395,6 +395,8 @@ func formCondition(fieldsMap map[string]string, cond string, logicalOperator str
 		value = addPGQuotes(value)
 	}
 
+	field = "q." + field
+
 	switch operatorBindings[sep] { // switch operators
 	case "&&": // handle OVERLAPS operator
 		switch valueType {
@@ -406,15 +408,22 @@ func formCondition(fieldsMap map[string]string, cond string, logicalOperator str
 	default: // rest of operators
 		switch valueType {
 		case "ARRAY": // array format
-			cond = field + " " + operatorBindings[sep] + " any(array[" + strings.TrimRight(arrValue, ",") + "])"
+			switch operatorBindings[sep] { // handle operators inside array condition
+			case "=":
+				cond = field + " =" + " any(array[" + strings.TrimRight(arrValue, ",") + "])"
+			case "!=":
+				cond = "not " + field + " =" + " any(array[" + strings.TrimRight(arrValue, ",") + "])"
+			default:
+				return "", newError("Passed unexpected operator in array condition - " + operatorBindings[sep])
+			}
 		default: // others
 			cond = field + " " + operatorBindings[sep] + " " + value
 		}
 	}
 
 	if logicalOperator != "" {
-		return "q." + cond + " " + logicalBindings[logicalOperator], nil
+		return cond + " " + logicalBindings[logicalOperator], nil
 	}
 
-	return "q." + cond, nil
+	return cond, nil
 }
