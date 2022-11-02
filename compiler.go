@@ -7,13 +7,14 @@ import (
 )
 
 var operatorBindings = map[string]string{
-	"==": "=",  // EQUALS
-	"!=": "!=", // NOT EQUALS
-	"<":  "<",  // LESS
-	"<=": "<=", // LESS OR EQUALS
-	">":  ">",  // GREATER
-	">=": ">=", // GREATER OR EQUALS
-	">>": "&&", // OVERLAPS
+	"==":  "=",   // EQUALS
+	"!=":  "!=",  // NOT EQUALS
+	"<":   "<",   // LESS
+	"<=":  "<=",  // LESS OR EQUALS
+	">":   ">",   // GREATER
+	">=":  ">=",  // GREATER OR EQUALS
+	">>":  "&&",  // OVERLAPS
+	"->>": "->>", // INCLUDES
 }
 
 var logicalBindings = map[string]string{
@@ -330,11 +331,21 @@ func formCondition(fieldsMap map[string]string, cond string, logicalOperator str
 		if f == "" {
 			return "", newError("Passed unexpected field name in search condition - " + condParts[0])
 		}
-		if logicalOperator != "" {
-			return "lower(q." + f + `::text) like '%` + strings.ToLower(condParts[1]) + `%'` + " " + logicalBindings[logicalOperator], nil
+
+		// handle nested JSONB search field
+		nestedArr := strings.Split(condParts[1], "^^")
+		if nestedArr[0] != condParts[1] {
+			f = "q." + f + operatorBindings["->>"] + `'` + nestedArr[0] + `'::text like '%`
+			condParts[1] = nestedArr[1]
+		} else {
+			f = "lower(q." + f + `::text) like '%`
 		}
 
-		return "lower(q." + f + `::text) like '%` + strings.ToLower(condParts[1]) + `%'`, nil
+		if logicalOperator != "" {
+			return f + strings.ToLower(condParts[1]) + `%'` + " " + logicalBindings[logicalOperator], nil
+		}
+
+		return f + strings.ToLower(condParts[1]) + `%'`, nil
 	}
 
 	var sep string
@@ -363,7 +374,17 @@ func formCondition(fieldsMap map[string]string, cond string, logicalOperator str
 		return "", newError("Passed unexpected field name in condition - " + f)
 	}
 
+	// handle nested JSONB field
 	var valueType string
+	nestedArr := strings.Split(value, "^^")
+	if nestedArr[0] != value {
+		field = "q." + f + operatorBindings["->>"] + `'` + nestedArr[0] + `'`
+		value = `'` + nestedArr[1] + `'`
+		valueType = "STRING"
+	} else {
+		field = "q." + field
+	}
+
 	if value == "false" || value == "true" { // handle boolean type
 		valueType = "BOOL"
 	}
@@ -394,8 +415,6 @@ func formCondition(fieldsMap map[string]string, cond string, logicalOperator str
 	if valueType == "" { // string format
 		value = addPGQuotes(value)
 	}
-
-	field = "q." + field
 
 	switch operatorBindings[sep] { // switch operators
 	case "&&": // handle OVERLAPS operator

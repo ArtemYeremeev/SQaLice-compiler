@@ -291,6 +291,22 @@ var testGetCases = []struct {
 		CountQuery: "",
 		Err:        newError("Passed unexpected operator in array condition - <="),
 	},
+	{ // 32. Test nested object condition with integer field
+		Target:    "v_test",
+		Params:    "ID?content==ID^^1?",
+		WithCount: false,
+
+		MainQuery:  "select q.id from v_test q where q.content->>'ID' = '1'",
+		CountQuery: "",
+	},
+	{ // 33. Test nested object condition with string field
+		Target:    "v_test",
+		Params:    "ID?content==content^^test?",
+		WithCount: false,
+
+		MainQuery:  "select q.id from v_test q where q.content->>'content' = 'test'",
+		CountQuery: "",
+	},
 }
 
 func TestGet(t *testing.T) {
@@ -433,6 +449,15 @@ var testSearchCases = []struct {
 		SearchParams: "(content~~1||content~~2)*(extraField~~some||extraField~~any)",
 
 		MainQuery:  "select q.id, q.content, q.extra_field from v_test q where ((lower(q.content::text) like '%1%' or lower(q.content::text) like '%2%') and (lower(q.extra_field::text) like '%some%' or lower(q.extra_field::text) like '%any%')) order by q.id desc",
+		CountQuery: "",
+	},
+	{ // 13. Test nested object condition search
+		Target:       "v_test",
+		Params:       "ID??",
+		WithCount:    false,
+		SearchParams: "content~~content^^something",
+
+		MainQuery:  "select q.id from v_test q where (q.content->>'content'::text like '%something%')",
 		CountQuery: "",
 	},
 }

@@ -95,6 +95,7 @@ SQaLice поддерживает следующие математические
 | БОЛЬШЕ           | >       | >     |
 | БОЛЬШЕ ИЛИ РАВНО | >=      | >=    |
 | СОДЕРЖИТ         | >>      | &&    |
+| ВКЛЮЧАЕТ         | ->>     | ->>   |
 
 ### Пример адресной строки, содержащей математический оператор
 
@@ -331,6 +332,16 @@ http://url/.../query=ID,content,extraField??ID,desc,,&searchQuery=(content~~1||c
 
 ```sql
 select q.id, q.content, q.extra_field from v_test q where ((lower(q.content::text) like '%1%' or lower(q.content::text) like '%2%') and (lower(q.extra_field::text) like '%some%' or lower(q.extra_field::text) like '%any%')) order by q.id desc
+```
+
+Запрос со вложенным объектом:
+
+```http
+http://url/.../query=ID,content,extraField??ID,desc,,&searchQuery=content~~extraField^^something
+```
+
+```sql
+select q.id, q.content, q.extra_field from v_test q where (q.content->>'extraField'::text like '%something%')
 ```
 
 При передаче значения __searchField__, отсутствующего в параметре модели, SQaLice вернет ошибку:
