@@ -335,7 +335,7 @@ func formCondition(fieldsMap map[string]string, cond string, logicalOperator str
 		// handle nested JSONB search field
 		nestedArr := strings.Split(condParts[1], "^^")
 		if nestedArr[0] != condParts[1] {
-			f = "q." + f + operatorBindings["->>"] + `'` + nestedArr[0] + `'::text like '%`
+			f = "lower(q." + f + operatorBindings["->>"] + `'` + nestedArr[0] + `'::text) like '%`
 			condParts[1] = nestedArr[1]
 		} else {
 			f = "lower(q." + f + `::text) like '%`

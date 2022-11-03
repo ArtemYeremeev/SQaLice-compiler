@@ -457,7 +457,7 @@ var testSearchCases = []struct {
 		WithCount:    false,
 		SearchParams: "content~~content^^something",
 
-		MainQuery:  "select q.id from v_test q where (q.content->>'content'::text like '%something%')",
+		MainQuery:  "select q.id from v_test q where (lower(q.content->>'content'::text) like '%something%')",
 		CountQuery: "",
 	},
 }
