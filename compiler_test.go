@@ -6,10 +6,10 @@ import (
 )
 
 type TestModel struct {
-	ID      *int64  `json:"ID,omitempty" sql:"id"`
-	Content *string `json:"content,omitempty" sql:"content"`
-	Count   *int    `json:"count,omitempty" sql:"count"`
-	IsBool  *bool   `json:"isBool,omitempty" sql:"is_bool"`
+	ID         *int64   `json:"ID,omitempty" sql:"id"`
+	Content    *string  `json:"content,omitempty" sql:"content"`
+	Count      *int     `json:"count,omitempty" sql:"count"`
+	IsBool     *bool    `json:"isBool,omitempty" sql:"is_bool"`
 	TestNestedModel
 }
 
@@ -305,6 +305,14 @@ var testGetCases = []struct {
 		WithCount: false,
 
 		MainQuery:  "select q.id from v_test q where q.content->>'content' = 'test'",
+		CountQuery: "",
+	},
+	{ // 34. Test nested object condition with array value
+		Target:    "v_test",
+		Params:    "ID?content==ID^^vla,2?",
+		WithCount: false,
+
+		MainQuery:  "select q.id from v_test q where q.content->>'ID' = any(array['vla',2])",
 		CountQuery: "",
 	},
 }
