@@ -312,7 +312,7 @@ var testGetCases = []struct {
 		Params:    "ID?content==ID^^vla,2?",
 		WithCount: false,
 
-		MainQuery:  "select q.id from v_test q where q.content->>'ID' = any(array['vla',2])",
+		MainQuery:  "select q.id from v_test q where q.content->>'ID' = any(array['vla','2'])",
 		CountQuery: "",
 	},
 }

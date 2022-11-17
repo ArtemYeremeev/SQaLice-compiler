@@ -380,7 +380,7 @@ func formCondition(fieldsMap map[string]string, cond string, logicalOperator str
 	if nestedArr[0] != value { 
 		field = "q." + f + operatorBindings["->>"] + `'` + nestedArr[0] + `'`
 		if strings.Contains(nestedArr[1], ",") { // handle nested JSONB array value
-			arrValue = handleArrCondValues(nestedArr[1])
+			arrValue = handleArrCondValues(nestedArr[1], true)
 			valueType = "ARRAY"
 		} else {
 			value = `'` + nestedArr[1] + `'`
@@ -401,7 +401,7 @@ func formCondition(fieldsMap map[string]string, cond string, logicalOperator str
 	}
 
 	if valueType == "" && strings.Contains(value, ",") { // handle array type
-		arrValue = handleArrCondValues(value)
+		arrValue = handleArrCondValues(value, false)
 		valueType = "ARRAY"
 	}
 	if valueType == "" { // string format
@@ -440,22 +440,26 @@ func formCondition(fieldsMap map[string]string, cond string, logicalOperator str
 }
 
 // handleArrCondValues preprocess values inside query condition
-func handleArrCondValues(value string) string {
+func handleArrCondValues(value string, isNestedJson bool) string {
 	arrValues := strings.Split(value, ",")
 
 	var respValue string
 	for _, v := range arrValues {
-		_, err := strconv.ParseBool(v)
-		if err == nil {
-			respValue = respValue + v + ","
-			continue
+		if isNestedJson {
+			respValue = respValue + addPGQuotes(v) + ","
+		} else {
+			_, err := strconv.ParseBool(v)
+			if err == nil {
+				respValue = respValue + v + ","
+				continue
+			}
+			_, err = strconv.Atoi(v)
+			if err == nil {
+				respValue = respValue + v + ","
+				continue
+			}
+			respValue = respValue + addPGQuotes(v) + ","
 		}
-		_, err = strconv.Atoi(v)
-		if err == nil {
-			respValue = respValue + v + ","
-			continue
-		}
-		respValue = respValue + addPGQuotes(v) + ","
 	}
 
 	return respValue
