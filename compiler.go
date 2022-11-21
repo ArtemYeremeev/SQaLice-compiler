@@ -6,6 +6,13 @@ import (
 	"strings"
 )
 
+// Logical bindings between SQaLice and PG
+var logicalBindings = map[string]string{
+	"*":  "and", // AND
+	"||": "or",  // OR
+}
+
+// Standart bindings between SQaLice and PG
 var operatorBindings = map[string]string{
 	"==":  "=",   // EQUALS
 	"!=":  "!=",  // NOT EQUALS
@@ -17,9 +24,10 @@ var operatorBindings = map[string]string{
 	"->>": "->>", // INCLUDES
 }
 
-var logicalBindings = map[string]string{
-	"*":  "and", // AND
-	"||": "or",  // OR
+// Bindings for null field values
+var nullOperatorBindings = map[string]string{
+	"==": "=",  // EQUALS
+	"!=": "!=", // NOT EQUALS
 }
 
 // Get builds a GET query with parameters
@@ -377,7 +385,7 @@ func formCondition(fieldsMap map[string]string, cond string, logicalOperator str
 	// handle nested JSONB field
 	var valueType, arrValue string
 	nestedArr := strings.Split(value, "^^")
-	if nestedArr[0] != value { 
+	if nestedArr[0] != value {
 		field = "q." + f + operatorBindings["->>"] + `'` + nestedArr[0] + `'`
 		if strings.Contains(nestedArr[1], ",") { // handle nested JSONB array value
 			arrValue = handleArrCondValues(nestedArr[1], true)
@@ -390,22 +398,25 @@ func formCondition(fieldsMap map[string]string, cond string, logicalOperator str
 		field = "q." + field
 	}
 
-	if value == "false" || value == "true" { // handle boolean type
+	// Handle value type
+	switch value {
+	case "null", "NULL": // NULL
+		valueType = "NULL"
+	case "false", "true", "FALSE", "TRUE": // BOOLEAN
 		valueType = "BOOL"
-	}
-	if valueType == "" {
-		_, err := strconv.Atoi(value) // handle integer type
+	default:
+		_, err := strconv.Atoi(value) // INTEGER
 		if err == nil {
 			valueType = "INT"
 		}
-	}
 
-	if valueType == "" && strings.Contains(value, ",") { // handle array type
-		arrValue = handleArrCondValues(value, false)
-		valueType = "ARRAY"
-	}
-	if valueType == "" { // string format
-		value = addPGQuotes(value)
+		if valueType == "" && strings.Contains(value, ",") { // ARRAY
+			arrValue = handleArrCondValues(value, false)
+			valueType = "ARRAY"
+		}
+		if valueType == "" { // STRING by default
+			value = addPGQuotes(value)
+		}
 	}
 
 	switch operatorBindings[sep] { // switch operators
@@ -413,6 +424,8 @@ func formCondition(fieldsMap map[string]string, cond string, logicalOperator str
 		switch valueType {
 		case "ARRAY": // array format
 			cond = field + " " + operatorBindings[sep] + " array[" + strings.TrimRight(arrValue, ",") + "]"
+		case "NULL": // unexpected null value
+		return "", newError("Passed unexpected OVERLAPS operator in NULL condition")
 		default: // others
 			cond = field + " " + operatorBindings[sep] + " array[" + value + "]"
 		}
@@ -425,7 +438,16 @@ func formCondition(fieldsMap map[string]string, cond string, logicalOperator str
 			case "!=":
 				cond = "not " + field + " =" + " any(array[" + strings.TrimRight(arrValue, ",") + "])"
 			default:
-				return "", newError("Passed unexpected operator in array condition - " + operatorBindings[sep])
+				return "", newError("Passed unexpected operator in array condition - " + sep)
+			}
+		case "NULL": // null values
+			switch nullOperatorBindings[sep] {
+			case "=":
+				cond = field + " is null"
+			case "!=":
+				cond = field + " is not null"
+			default:
+				return "", newError("Passed unexpected operator in NULL condition - " + sep)
 			}
 		default: // others
 			cond = field + " " + operatorBindings[sep] + " " + value

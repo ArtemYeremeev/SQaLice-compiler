@@ -6,10 +6,10 @@ import (
 )
 
 type TestModel struct {
-	ID         *int64   `json:"ID,omitempty" sql:"id"`
-	Content    *string  `json:"content,omitempty" sql:"content"`
-	Count      *int     `json:"count,omitempty" sql:"count"`
-	IsBool     *bool    `json:"isBool,omitempty" sql:"is_bool"`
+	ID      *int64  `json:"ID,omitempty" sql:"id"`
+	Content *string `json:"content,omitempty" sql:"content"`
+	Count   *int    `json:"count,omitempty" sql:"count"`
+	IsBool  *bool   `json:"isBool,omitempty" sql:"is_bool"`
 	TestNestedModel
 }
 
@@ -314,6 +314,40 @@ var testGetCases = []struct {
 
 		MainQuery:  "select q.id from v_test q where q.content->>'ID' = any(array['vla','2'])",
 		CountQuery: "",
+	},
+	{ // 35. Test condition with IS NULL value
+		Target:    "v_test",
+		Params:    "ID?content==null?",
+		WithCount: false,
+
+		MainQuery:  "select q.id from v_test q where q.content is null",
+		CountQuery: "",
+	},
+	{ // 36. Test multiple conditions with null values
+		Target:    "v_test",
+		Params:    "ID?content!=null||ID==NULL?",
+		WithCount: false,
+
+		MainQuery:  "select q.id from v_test q where q.content is not null or q.id is null",
+		CountQuery: "",
+	},
+	{ // 37. Test condition with unexpected OVERLAPS operator for NULL value
+		Target:    "v_test",
+		Params:    "ID?content>>null?",
+		WithCount: false,
+
+		MainQuery:  "",
+		CountQuery: "",
+		Err:        newError("Passed unexpected OVERLAPS operator in NULL condition"),
+	},
+	{ // 38. Test condition with different unexpected operator for NULL value
+		Target:    "v_test",
+		Params:    "?content<null?",
+		WithCount: false,
+
+		MainQuery:  "",
+		CountQuery: "",
+		Err:        newError("Passed unexpected operator in NULL condition - <"),
 	},
 }
 
