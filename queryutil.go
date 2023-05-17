@@ -11,10 +11,11 @@ var mathOperatorsList = []string{"==", "!=", "<=", "<", ">=", ">>", ">"}
 
 // CondExpr describes structure of query condition
 type CondExpr struct {
-	FieldName string
-	Operator  string
-	Value     interface{}
-	IsBracket bool
+	FieldName    string
+	Operator     string
+	Value        interface{}
+	IsBracket    bool
+	SepOperator  string
 }
 
 // GetFieldsList returns a list of query fields in SQL format
@@ -257,6 +258,7 @@ func AddQueryFieldsToSelect(model interface{}, query string, fieldsArray []strin
 
 // AddQueryConditions adds conditions to query conditions list with AND separators
 // If isDeleteCurrent argument passed, conds list peplacing current query conditions
+// If correct sepOperator passed in condition, compiler use it instead of AND separator
 func AddQueryConditions(query string, conds []CondExpr, isDeleteCurrent bool) (string, error) {
 	if query == "" {
 		return query, newError("Passed empty query for forming conditions block")
@@ -284,9 +286,13 @@ func AddQueryConditions(query string, conds []CondExpr, isDeleteCurrent bool) (s
 		if !isOperatorCorrect {
 			return query, newError("Passed incorrect operator in query condition - " + cond.Operator)
 		}
+		sepOperator := "*"
+		if cond.SepOperator != "" && logicalBindings[sepOperator] != "" {
+			sepOperator = cond.SepOperator
+		}
 
 		if queryBlocks[1] != "" { // separates conditions with AND logical operator
-			queryBlocks[1] = queryBlocks[1] + "*"
+			queryBlocks[1] = queryBlocks[1] + sepOperator
 		}
 		if cond.IsBracket { // handle bracket condition
 			queryBlocks[1] = queryBlocks[1] + "(" + cond.FieldName + cond.Operator + fmt.Sprintf("%v", cond.Value) + ")"
