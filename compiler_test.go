@@ -99,7 +99,7 @@ var testGetCases = []struct {
 		Params:    "content,count?(count!=1*count!=3||ID>=11)||(content==something awful||content==critical404)*ID!=42?",
 		WithCount: false,
 
-		MainQuery:  "select q.content, q.count from v_test q where (q.count != 1 and q.count != 3 or q.id >= 11) or (q.content = 'something awful' or q.content = 'critical404') and q.id != 42",
+		MainQuery:  "select q.content, q.count from v_test q where (q.count != 1 and q.count != 3 or q.id >= 11) or (q.content = 'somethingawful' or q.content = 'critical404') and q.id != 42",
 		CountQuery: "",
 	},
 	{ // 10. Test conditions params block with 1 non-bracket array condition

@@ -129,8 +129,8 @@ func combineTarget(target string) (string, error) {
 
 // combineConditions assembles WHERE query block
 func combineConditions(fieldsMap map[string]string, conds string, searchParams string) (string, error) {
-	conds = strings.Trim(conds, " ")
-	searchParams = strings.Trim(searchParams, " ")
+	conds = strings.ReplaceAll(conds, " ", "")
+	searchParams = strings.ReplaceAll(searchParams, " ", "%")
 
 	if conds == "" && searchParams == "" {
 		return "", nil
