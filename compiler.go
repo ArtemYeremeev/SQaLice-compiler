@@ -129,6 +129,9 @@ func combineTarget(target string) (string, error) {
 
 // combineConditions assembles WHERE query block
 func combineConditions(fieldsMap map[string]string, conds string, searchParams string) (string, error) {
+	conds = strings.Trim(conds, " ")
+	searchParams = strings.Trim(searchParams, " ")
+
 	if conds == "" && searchParams == "" {
 		return "", nil
 	}
@@ -415,6 +418,10 @@ func formCondition(fieldsMap map[string]string, cond string, logicalOperator str
 			valueType = "ARRAY"
 		}
 		if valueType == "" { // STRING by default
+			if len(value) > 32 {
+				return "", newError("Too long string value in condition - " + value)
+			}
+
 			value = addPGQuotes(value)
 		}
 	}
@@ -425,7 +432,7 @@ func formCondition(fieldsMap map[string]string, cond string, logicalOperator str
 		case "ARRAY": // array format
 			cond = field + " " + operatorBindings[sep] + " array[" + strings.TrimRight(arrValue, ",") + "]"
 		case "NULL": // unexpected null value
-		return "", newError("Passed unexpected OVERLAPS operator in NULL condition")
+			return "", newError("Passed unexpected OVERLAPS operator in NULL condition")
 		default: // others
 			cond = field + " " + operatorBindings[sep] + " array[" + value + "]"
 		}
