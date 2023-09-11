@@ -317,8 +317,7 @@ func ReplaceQueryCondition(model interface{}, query string, newCond CondExpr) (s
 	if err != nil {
 		return "", newError("Condition with passed name " + newCond.FieldName + " not found")
 	}
-	// If condition with passed name not found, exit
-	if oldCond == nil {
+	if oldCond == nil { // If condition with passed name not found, exit
 		return query, nil
 	}
 
@@ -338,6 +337,42 @@ func ReplaceQueryCondition(model interface{}, query string, newCond CondExpr) (s
 
 	replacer := strings.NewReplacer(oldCondString, newCondString)
 	return replacer.Replace(query), nil
+}
+
+// DeleteQueryCondition prunes condition from query by fieldname
+func DeleteQueryCondition(model interface{}, query, condName string) (string, error) {
+	if query == "" {
+		return query, newError("Passed empty query for condition prune")
+	}
+
+	// form fields map with formDinamicModel
+	fieldsMap := formDinamicModel(model)
+
+	c, _ := GetConditionByName(fieldsMap, query, condName, false)
+	if c == nil { // If condition with passed name not found, exit
+		return query, nil
+	}
+
+	var condString string
+	if c.IsBracket {
+		condString = "(" + c.FieldName + c.Operator + fmt.Sprintf("%v", c.Value) + ")"
+	} else {
+		condString = c.FieldName + c.Operator + fmt.Sprintf("%v", c.Value)
+	}
+
+	// Prune condition
+	for k := range logicalBindings {
+		query = strings.Replace(query, k + condString, "", 1)
+	}
+	query = strings.Replace(query, condString, "", 1)
+
+	// Prune redundant logical operators in conditions set
+	for k := range logicalBindings {
+		query = strings.Replace(query, "?"+ k, "?", 1)
+		query = strings.Replace(query, k + "?", "?", 1)
+	}
+
+	return query, nil
 }
 
 // AddQueryRestrictions adds restrictions to query restrictions block instead of current

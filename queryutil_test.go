@@ -529,6 +529,57 @@ func TestReplaceQueryCondition(t *testing.T) {
 	}
 }
 
+var testDeleteQueryConditionCases = []struct {
+	// Params
+	Query    string
+	CondName string
+	// Response
+	RespQuery string
+}{
+	{ // 1. Test unit condition delete
+		Query: "?ID==1?",
+		CondName: "ID",
+		RespQuery: "??",
+	},
+	{ // 2. Test bracket condition delete
+		Query: "?(ID==1)*name==smth?",
+		CondName: "ID",
+		RespQuery: "?name==smth?",
+	},
+	{ // 3. Test non-bracket condition delete from set
+		Query: "?ID==1||name==smth*count==1?",
+		CondName: "name",
+		RespQuery: "?ID==1*count==1?",
+	},
+	{ // 4. Test empty conditions set
+		Query: "??",
+		CondName: "name",
+		RespQuery: "??",
+	},
+	{ // 5. Test absent condition
+		Query: "?ID==1?",
+		CondName: "name",
+		RespQuery: "?ID==1?",
+	},
+}
+
+func TestDeleteQueryCondition(t *testing.T) {
+	for index, c := range testDeleteQueryConditionCases {
+		t.Run(strconv.Itoa(index+1), func(t *testing.T) {
+			respQuery, err := DeleteQueryCondition(TestModel{}, c.Query, c.CondName)
+			if err != nil {
+				t.Errorf("expected err: %v, got: %v", nil, err)
+				t.FailNow()
+			}
+
+			if respQuery != c.RespQuery {
+				t.Errorf("Expected response query: %v, got: %v", c.RespQuery, respQuery)
+				t.FailNow()
+			}
+		})
+	}
+}
+
 var testAddQueryRestrictionsCases = []struct {
 	// Params
 	Query     string
