@@ -129,6 +129,7 @@ func combineTarget(target string) (string, error) {
 
 // combineConditions assembles WHERE query block
 func combineConditions(fieldsMap map[string]string, conds string, searchParams string) (string, error) {
+	// Prune spaces
 	conds = strings.ReplaceAll(conds, " ", "")
 	searchParams = strings.ReplaceAll(searchParams, " ", "%")
 
@@ -352,11 +353,12 @@ func formCondition(fieldsMap map[string]string, cond string, logicalOperator str
 			f = "lower(q." + f + `::text) like '%`
 		}
 
+		value := pruneInjections(condParts[1], true)
 		if logicalOperator != "" {
-			return f + strings.ToLower(condParts[1]) + `%'` + " " + logicalBindings[logicalOperator], nil
+			return f + strings.ToLower(value) + `%'` + " " + logicalBindings[logicalOperator], nil
 		}
 
-		return f + strings.ToLower(condParts[1]) + `%'`, nil
+		return f + strings.ToLower(value) + `%'`, nil
 	}
 
 	var sep string
@@ -378,7 +380,7 @@ func formCondition(fieldsMap map[string]string, cond string, logicalOperator str
 	}
 
 	f := strings.Split(cond, sep)[0]
-	value := strings.Split(cond, sep)[1]
+	value := pruneInjections(strings.Split(cond, sep)[1], false)
 
 	field := fieldsMap[f]
 	if field == "" {
@@ -492,4 +494,12 @@ func handleArrCondValues(value string, isNestedJson bool) string {
 	}
 
 	return respValue
+}
+
+// pruneInjections cleans query params from SQL marks
+func pruneInjections(str string, isSearch bool) string {
+	if isSearch {
+		return regexp.MustCompile(`[^a-zA-Z0-9',^ ]+`).ReplaceAllString(str, "%")
+	}
+	return regexp.MustCompile(`[^a-zA-Z0-9',^ ]+`).ReplaceAllString(str, "")
 }
