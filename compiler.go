@@ -501,5 +501,5 @@ func pruneInjections(str string, isSearch bool) string {
 	if isSearch {
 		return regexp.MustCompile(`[^а-яА-Яa-zA-Z0-9',^ ]+`).ReplaceAllString(str, "%")
 	}
-	return regexp.MustCompile(`[^а-яА-Яa-zA-Z0-9{}',-^ ]+`).ReplaceAllString(str, "")
+	return regexp.MustCompile(`[^а-яА-Яa-zA-Z0-9{}_',-^ ]+`).ReplaceAllString(str, "")
 }
