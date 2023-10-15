@@ -372,6 +372,67 @@ func TestGet(t *testing.T) {
 	}
 }
 
+var testEncryptedGetCases = []struct {
+	// EncryptedGet params
+	ModelsMap map[string]map[string]string
+	Target    string
+	Params    []byte
+	WithCount bool
+
+	// EncryptedGet response
+	MainQuery  string
+	CountQuery string
+	Err        error
+}{
+	{ // 1. Test empty query decryption
+		Target: "v_test",
+		Params: []byte{71, 218, 74, 171, 41, 105, 227, 173, 100, 153, 109, 100, 85, 1, 238, 38, 232, 192, 228, 151, 25, 28, 216, 210, 206, 99, 238, 167, 101, 173}, // ??
+		WithCount: false,
+
+		MainQuery: "select q.id, q.content, q.count, q.extra_field, q.is_bool, q.one_more_field from v_test q",
+		CountQuery: "",
+	},
+	{ // 2. Test encrypted query with conditions block
+		Target: "v_test",
+		Params: []byte{164, 226, 185, 99, 131, 244, 35, 38, 95, 141, 122, 52, 86, 187, 204, 30,
+			227, 204, 67, 73, 11, 216, 174, 101, 4, 166, 142, 210, 230, 171, 245, 170, 58, 19, 27, 198, 137}, // ID?ID==1?
+		WithCount: false,
+
+		MainQuery: "select q.id from v_test q where q.id = 1",
+		CountQuery: "",
+	},
+	{ // 3. Test encrypted query with fields and restrictions blocks
+		Target: "v_test",
+		Params: []byte{246, 78, 100, 171, 247, 107, 160, 25, 27, 242, 27, 23, 170, 234, 77, 188, 239, 251, 157, 109,
+			0, 124, 114, 98, 88, 20, 151, 108, 251, 2, 249, 116, 13, 14, 213, 109, 27, 196, 201, 247, 160, 98, 57, 147, 11, 61, 203, 101}, // content??ID,desc,5,0
+		WithCount: false,
+
+		MainQuery: "select q.id from v_test q where q.id = 1",
+		CountQuery: "",
+	},
+}
+
+func TestEncryptedGet(t *testing.T) {
+	for index, c := range testEncryptedGetCases {
+		t.Run(strconv.Itoa(index+1), func(t *testing.T) {
+			mainQuery, countQuery, err := EncryptedGet(TestModel{}, c.Target, string(c.Params), c.WithCount, "3lWstTnTlNk6gg6P")
+			if err != nil && err.Error() != c.Err.Error() {
+				t.Errorf("expected err: %v, got: %v", c.Err, err)
+				t.FailNow()
+			}
+
+			if mainQuery != c.MainQuery {
+				t.Errorf("expected: %v, got: %v", c.MainQuery, mainQuery)
+				t.Fail()
+			}
+			if c.WithCount && countQuery != c.CountQuery {
+				t.Errorf("expected: %v, got: %v", c.CountQuery, countQuery)
+				t.Fail()
+			}
+		})
+	}
+}
+
 var testSearchCases = []struct {
 	// Search params
 	ModelsMap    map[string]map[string]string
@@ -508,6 +569,63 @@ func TestSearch(t *testing.T) {
 	for index, c := range testSearchCases {
 		t.Run(strconv.Itoa(index+1), func(t *testing.T) {
 			mainQuery, countQuery, err := Search(TestModel{}, c.Target, c.Params, c.WithCount, c.SearchParams)
+			if err != nil && err.Error() != c.Err.Error() {
+				t.Errorf("expected err: %v, got: %v", c.Err, err)
+				t.FailNow()
+			}
+
+			if mainQuery != c.MainQuery {
+				t.Errorf("expected: %v, got: %v", c.MainQuery, mainQuery)
+				t.Fail()
+			}
+			if c.WithCount && countQuery != c.CountQuery {
+				t.Errorf("expected: %v, got: %v", c.CountQuery, countQuery)
+				t.Fail()
+			}
+		})
+	}
+}
+
+var testEncryptedSearchCases = []struct {
+	// EncryptedSearch params
+	ModelsMap    map[string]map[string]string
+	Target       string
+	Params       []byte
+	WithCount    bool
+	SearchParams []byte
+
+	// EncryptedSearch response
+	MainQuery  string
+	CountQuery string
+	Err        error
+}{
+	{ // 1. Test default and search params decryption
+		Target: "v_test",
+		Params: []byte{114, 151, 117, 1, 14, 188, 235, 253, 20, 65, 32, 36, 102, 128, 228, 157, 247,
+			9, 117, 91, 143, 254, 147, 46, 206, 30, 94, 25, 140, 98, 21, 136, 105, 48, 106, 171, 224}, // ?ID!=1,2?
+		WithCount: false,
+		SearchParams: []byte{122, 95, 187, 194, 246, 177, 248, 205, 140, 181, 250, 222, 53, 215, 35, 56, 249, 222, 67, 48, 99, 43, 33, 86, 42, 147, 61, 32,
+			192, 247, 245, 209, 198, 115, 198, 175, 212, 19, 45, 38, 73, 16, 253, 171, 179, 174}, // content~~something
+
+		MainQuery: "select q.id, q.content, q.count, q.extra_field, q.is_bool, q.one_more_field from v_test q where (lower(q.content::text) like '%something%') and not q.id = any(array[1,2])",
+		CountQuery: "",
+	},
+	{ // 2. Test encrypted countQuery bulding
+		Target: "v_test",
+		Params: []byte{9, 209, 60, 157, 170, 232, 66, 75, 197, 69, 89, 28, 147, 138, 191, 112, 16, 18, 243, 137, 162, 25, 142, 68, 45, 220, 8, 164, 174, 252, 94, 93, 18, 149, 187}, // count??
+		WithCount: true,
+		SearchParams: []byte{122, 95, 187, 194, 246, 177, 248, 205, 140, 181, 250, 222, 53, 215, 35, 56, 249, 222, 67, 48, 99, 43, 33, 86, 42, 147, 61, 32,
+			192, 247, 245, 209, 198, 115, 198, 175, 212, 19, 45, 38, 73, 16, 253, 171, 179, 174}, // content~~something
+
+		MainQuery: "select q.count from v_test q where (lower(q.content::text) like '%something%')",
+		CountQuery: "select count(*) from (select 1 from v_test q where (lower(q.content::text) like '%something%')) q",
+	},
+}
+
+func TestEncryptedSearch(t *testing.T) {
+	for index, c := range testEncryptedSearchCases {
+		t.Run(strconv.Itoa(index+1), func(t *testing.T) {
+			mainQuery, countQuery, err := EncryptedSearch(TestModel{}, c.Target, string(c.Params), c.WithCount, string(c.SearchParams), "3lWstTnTlNk6gg6P")
 			if err != nil && err.Error() != c.Err.Error() {
 				t.Errorf("expected err: %v, got: %v", c.Err, err)
 				t.FailNow()
