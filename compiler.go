@@ -4,9 +4,6 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-
-	"crypto/aes"
-	"crypto/cipher"
 )
 
 // Logical bindings between SQaLice and PG
@@ -34,23 +31,23 @@ var nullOperatorBindings = map[string]string{
 }
 
 // Get builds a GET query with parameters
-func Get(model interface{}, target, params string, withCount bool) (mainQ, countQ  string, er error) {
-	return compile(model, target, params, withCount, "")
+func Get(model interface{}, target, params string, withCount, withArgs bool) (mainQ, countQ string, args []interface{}, er error) {
+	return compile(model, target, params, withCount, withArgs, "")
 }
 
-// EncryptedGet builds a GET query with encrypted params
-func EncryptedGet(model interface{}, target, params string, withCount bool, key string) (mainQ, countQ string, er error) {
-	return compile(model, target, decryptParams(params, key), withCount, "")
-}
+/* // EncryptedGet builds a GET query with encrypted params
+func EncryptedGet(model interface{}, target, params string, withCount, withArgs bool, key string) (mainQ, countQ string, args []interface{}, er error) {
+	return compile(model, target, decryptParams(params, key), withCount, withArgs, "")
+} */
 
 // Search builds a GET query with LIKE filter on searchField
-func Search(model interface{}, target, params string, withCount bool, searchParams string) (mainQ, countQ  string, er error) {
-	return compile(model, target, params, withCount, searchParams)
+func Search(model interface{}, target, params string, withCount, withArgs bool, searchParams string) (mainQ, countQ string, args []interface{}, er error) {
+	return compile(model, target, params, withCount, withArgs, searchParams)
 }
 
-// EncryptedSearch builds a GET query with LIKE filter on searchField with decrypted params and searchParams
-func EncryptedSearch(model interface{}, target, params string, withCount bool, searchParams, key string) (mainQ, countQ  string, er error) {
-	return compile(model, target, decryptParams(params, key), withCount, decryptParams(searchParams, key))
+/* // EncryptedSearch builds a GET query with LIKE filter on searchField with decrypted params and searchParams
+func EncryptedSearch(model interface{}, target, params string, withCount, withArgs bool, searchParams, key string) (mainQ, countQ string, args []interface{}, er error) {
+	return compile(model, target, decryptParams(params, key), withCount, withArgs, decryptParams(searchParams, key))
 }
 
 // decryptParams filter query through AES key
@@ -71,12 +68,12 @@ func decryptParams(params, key string) string {
 	}
 
 	return string(r[:])
-}
+} */
 
 // compile assembles a query strings to PG database for main query and count query
-func compile(model interface{}, target string, params string, withCount bool, searchParams string) (mainQ, countQ  string, er error) {
+func compile(model interface{}, target, params string, withCount, withArgs bool, searchParams string) (mainQ, countQ string, args []interface{}, er error) {
 	if params == "" {
-		return "", "", newError("Request parameters is not passed")
+		return "", "", nil, newError("Request parameters is not passed")
 	}
 
 	// form fields map with formDinamicModel
@@ -85,22 +82,22 @@ func compile(model interface{}, target string, params string, withCount bool, se
 	queryBlocks := strings.Split(params, "?")
 	selectBlock, err := combineFields(fieldsMap, queryBlocks[0])
 	if err != nil {
-		return "", "", err
+		return "", "", nil, err
 	}
 
 	fromBlock, err := combineTarget(target)
 	if err != nil {
-		return "", "", err
+		return "", "", nil, err
 	}
 
-	whereBlock, err := combineConditions(fieldsMap, queryBlocks[1], searchParams)
+	whereBlock, args, err := combineConditions(fieldsMap, queryBlocks[1], searchParams, withArgs)
 	if err != nil {
-		return "", "", err
+		return "", "", nil, err
 	}
 
 	limitsBlock, err := combineRestrictions(fieldsMap, queryBlocks[2])
 	if err != nil {
-		return "", "", err
+		return "", "", nil, err
 	}
 
 	var respArray []string
@@ -120,7 +117,7 @@ func compile(model interface{}, target string, params string, withCount bool, se
 		countQuery = "select count(*) from (" + q + ") q"
 	}
 
-	return mainQuery, countQuery, nil
+	return mainQuery, countQuery, args, nil
 }
 
 // combineSelect assembles SELECT query block
@@ -161,21 +158,30 @@ func combineTarget(target string) (string, error) {
 }
 
 // combineConditions assembles WHERE query block
-func combineConditions(fieldsMap map[string]string, conds string, searchParams string) (string, error) {
+func combineConditions(fieldsMap map[string]string, conds, searchParams string, withArgs bool) (string, []interface{}, error) {
 	// Prune spaces
 	conds = strings.ReplaceAll(conds, " ", "")
 	searchParams = strings.ReplaceAll(searchParams, " ", "%")
 
 	if conds == "" && searchParams == "" {
-		return "", nil
+		return "", nil, nil
+	}
+
+	var condIndex *int
+	if withArgs {
+		condIndex = func(i int)*int{return &i}(1)
 	}
 
 	whereBlock := "where "
-	// searchQuery handling
-	if searchParams != "" {
-		searchConds, err := formSearchConditions(fieldsMap, searchParams)
+	var searchArgs []interface{}
+	if searchParams != "" { // searchQuery handling
+		var (
+			searchConds string
+			err error
+		)
+		searchConds, searchArgs, condIndex, err = formSearchConditions(fieldsMap, searchParams, condIndex)
 		if err != nil {
-			return "", err
+			return "", nil, err
 		}
 		if searchConds != "" && conds != "" {
 			whereBlock = whereBlock + searchConds + "and "
@@ -185,12 +191,12 @@ func combineConditions(fieldsMap map[string]string, conds string, searchParams s
 	}
 
 	// standart conditions block handling
-	preparedConditions, err := extractConditionsSet(fieldsMap, conds, false)
+	preparedConditions, preparedArgs, _, err := extractConditionsSet(fieldsMap, conds, false, condIndex)
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 
-	return whereBlock + strings.Join(preparedConditions, " "), nil
+	return whereBlock + strings.Join(preparedConditions, " "), append(searchArgs, preparedArgs...), nil
 }
 
 // combineRestrictions assembles selection parameters
@@ -219,7 +225,7 @@ func combineRestrictions(fieldsMap map[string]string, rests string) (string, err
 		}
 
 		if restsBlock == "" {
-			restsBlock = "order by q.ID " + order
+			restsBlock = "order by q.id " + order
 		} else {
 			restsBlock = restsBlock + order
 		}
@@ -265,19 +271,24 @@ func combineRestrictions(fieldsMap map[string]string, rests string) (string, err
 }
 
 // formSearchConditions builds a conditions block with LIKE operator for search
-func formSearchConditions(fieldsMap map[string]string, params string) (string, error) {
-	preparedConditions, err := extractConditionsSet(fieldsMap, params, true)
+func formSearchConditions(fieldsMap map[string]string, params string, condIndex *int) (string, []interface{}, *int, error) {
+	preparedConds, preparedArgs, condI, err := extractConditionsSet(fieldsMap, params, true, condIndex)
 	if err != nil {
-		return "", err
+		return "", nil, nil, err
 	}
 
-	return "(" + strings.Join(preparedConditions, " ") + ") ", nil
+	return "(" + strings.Join(preparedConds, " ") + ") ", preparedArgs, condI, nil
 }
 
-func extractConditionsSet(fieldsMap map[string]string, conds string, isSearch bool) ([]string, error) {
-	// Parse logical operators
+func extractConditionsSet(fieldsMap map[string]string, conds string, isSearch bool, condIndex *int) ([]string, []interface{}, *int, error) {
 	bracketSubstrings := regexp.MustCompile(`\((.*?)\)`).FindAllString(conds, -1)
-	var preparedConditions []string
+
+	// Parse logical operators
+	var (
+		arg interface{}
+		preparedArgs []interface{}
+		preparedConds []string
+	)
 	for _, brCondSet := range bracketSubstrings {
 		condSet := brCondSet
 		condSet = strings.Trim(condSet, "(")
@@ -290,11 +301,12 @@ func extractConditionsSet(fieldsMap map[string]string, conds string, isSearch bo
 		)
 		opCount := strings.Count(condSet, "*") + strings.Count(condSet, "||")
 		for i := 0; i <= opCount; i++ { // loop number of logical operators in condition set
-			condSet, cond, err = handleConditionsSet(fieldsMap, condSet, isSearch)
+			condSet, cond, arg, condIndex, err = handleConditionsSet(fieldsMap, condSet, isSearch, condIndex)
 			if err != nil {
-				return nil, err
+				return nil, nil, nil, err
 			}
 			bracketConditions = append(bracketConditions, cond)
+			preparedArgs = append(preparedArgs, arg)
 		}
 		conds = strings.TrimPrefix(conds, brCondSet)
 
@@ -317,7 +329,7 @@ func extractConditionsSet(fieldsMap map[string]string, conds string, isSearch bo
 		if op != "" {
 			brCondSet = brCondSet + " " + logicalBindings[op]
 		}
-		preparedConditions = append(preparedConditions, brCondSet)
+		preparedConds = append(preparedConds, brCondSet)
 	}
 
 	var cond string
@@ -325,73 +337,83 @@ func extractConditionsSet(fieldsMap map[string]string, conds string, isSearch bo
 	opCount := strings.Count(conds, "*") + strings.Count(conds, "||")
 	if conds != "" { // handle non-bracket conditions set
 		for i := 0; i <= opCount; i++ { // loop number of logical operators in condition set
-			conds, cond, err = handleConditionsSet(fieldsMap, conds, isSearch)
+			conds, cond, arg, condIndex, err = handleConditionsSet(fieldsMap, conds, isSearch, condIndex)
 			if err != nil {
-				return nil, err
+				return nil, nil, nil, err
 			}
-			preparedConditions = append(preparedConditions, cond)
+			preparedConds = append(preparedConds, cond)
+			preparedArgs = append(preparedArgs, arg)
 		}
 	}
 
-	return preparedConditions, nil
+	return preparedConds, preparedArgs, condIndex, nil
 }
 
-func handleConditionsSet(fieldsMap map[string]string, condSet string, isSearch bool) (string, string, error) {
-	var cond string
-	var err error
-
+func handleConditionsSet(fieldsMap map[string]string, condSet string, isSearch bool, condIndex *int) (string, string, interface{}, *int, error) {
 	orIndex := strings.Index(condSet, "||")
 	andIndex := strings.Index(condSet, "*")
 
+	var (
+		err error
+		cond string
+		arg interface{}
+	)
 	if orIndex < 0 && andIndex < 0 { // no logical condition
-		cond, err = formCondition(fieldsMap, condSet, "", isSearch)
+		cond, arg, condIndex, err = formCondition(fieldsMap, condSet, "", isSearch, condIndex)
 		if err != nil {
-			return "", "", err
+			return "", "", nil, nil, err
 		}
 	} else if orIndex < 0 || (andIndex < orIndex && andIndex >= 0) { // handle AND logical condition
-		cond, err = formCondition(fieldsMap, condSet[:strings.Index(condSet, "*")], "*", isSearch)
+		cond, arg, condIndex, err = formCondition(fieldsMap, condSet[:strings.Index(condSet, "*")], "*", isSearch, condIndex)
 		if err != nil {
-			return "", "", err
+			return "", "", nil, nil, err
 		}
 		condSet = strings.TrimPrefix(condSet, condSet[:strings.Index(condSet, "*")]+"*")
 	} else { // handle OR logical condition
-		cond, err = formCondition(fieldsMap, condSet[:strings.Index(condSet, "||")], "||", isSearch)
+		cond, arg, condIndex, err = formCondition(fieldsMap, condSet[:strings.Index(condSet, "||")], "||", isSearch, condIndex)
 		if err != nil {
-			return "", "", err
+			return "", "", nil, nil, err
 		}
 		condSet = strings.TrimPrefix(condSet, condSet[:strings.Index(condSet, "||")]+"||")
 	}
 
-	return condSet, cond, nil
+	return condSet, cond, arg, condIndex, nil
 }
 
 // formCondition builds condition with standart operator
-func formCondition(fieldsMap map[string]string, cond string, logicalOperator string, isSearch bool) (string, error) {
+func formCondition(fieldsMap map[string]string, cond, logicalOperator string, isSearch bool, condIndex *int) (cnd string, ar interface{}, ind *int, er error) {
+	var arg interface{}
 	if isSearch { // handle search condition
 		condParts := strings.Split(cond, "~~")
 		if condParts == nil {
-			return "", nil
+			return "", nil, nil, nil
 		}
 		f := fieldsMap[condParts[0]]
 		if f == "" {
-			return "", newError("Passed unexpected field name in search condition - " + condParts[0])
+			return "", nil, nil, newError("Passed unexpected field name in search condition - " + condParts[0])
 		}
 
 		// handle nested JSONB search field
 		nestedArr := strings.Split(condParts[1], "^^")
 		if nestedArr[0] != condParts[1] {
-			f = "lower(q." + f + operatorBindings["->>"] + `'` + nestedArr[0] + `'::text) like '%`
+			f = "lower(q." + f + operatorBindings["->>"] + `'` + nestedArr[0] + `'::text) like `
 			condParts[1] = nestedArr[1]
 		} else {
-			f = "lower(q." + f + `::text) like '%`
+			f = "lower(q." + f + `::text) like `
 		}
 
-		value := pruneInjections(condParts[1], true)
+		value := "'%" + pruneInjections(condParts[1], true) + "%'"
+		if condIndex != nil {
+			arg = value
+			value = "$" + strconv.Itoa(*condIndex)
+			condIndex = func(i int)*int{i = *condIndex + 1; return &i}(*condIndex)
+		}
+
 		if logicalOperator != "" {
-			return f + strings.ToLower(value) + `%'` + " " + logicalBindings[logicalOperator], nil
+			return f + strings.ToLower(value) + " " + logicalBindings[logicalOperator], arg, condIndex, nil
 		}
 
-		return f + strings.ToLower(value) + `%'`, nil
+		return f + strings.ToLower(value), arg, condIndex, nil
 	}
 
 	var sep string
@@ -409,7 +431,7 @@ func formCondition(fieldsMap map[string]string, cond string, logicalOperator str
 		}
 	}
 	if sep == "" {
-		return "", newError("Unsupported operator in condition - " + cond)
+		return "", nil, nil, newError("Unsupported operator in condition - " + cond)
 	}
 
 	f := strings.Split(cond, sep)[0]
@@ -417,16 +439,16 @@ func formCondition(fieldsMap map[string]string, cond string, logicalOperator str
 
 	field := fieldsMap[f]
 	if field == "" {
-		return "", newError("Passed unexpected field name in condition - " + f)
+		return "", nil, nil, newError("Passed unexpected field name in condition - " + f)
 	}
 
 	// handle nested JSONB field
-	var valueType, arrValue string
+	var valueType string
 	nestedArr := strings.Split(value, "^^")
 	if nestedArr[0] != value {
 		field = "q." + f + operatorBindings["->>"] + `'` + nestedArr[0] + `'`
 		if strings.Contains(nestedArr[1], ",") { // handle nested JSONB array value
-			arrValue = handleArrCondValues(nestedArr[1], true)
+			value = handleArrCondValues(nestedArr[1], true)
 			valueType = "ARRAY"
 		} else {
 			value = `'` + nestedArr[1] + `'`
@@ -438,9 +460,9 @@ func formCondition(fieldsMap map[string]string, cond string, logicalOperator str
 
 	// Handle value type
 	switch value {
-	case "null", "NULL": // NULL
+	case "null", "NULL", "undefined": // NULL
 		valueType = "NULL"
-	case "false", "true", "FALSE", "TRUE": // BOOLEAN
+	case "false", "true", "FALSE", "TRUE", "True", "False": // BOOLEAN
 		valueType = "BOOL"
 	default:
 		_, err := strconv.Atoi(value) // INTEGER
@@ -449,25 +471,43 @@ func formCondition(fieldsMap map[string]string, cond string, logicalOperator str
 		}
 
 		if valueType == "" && strings.Contains(value, ",") { // ARRAY
-			arrValue = handleArrCondValues(value, false)
+			value = handleArrCondValues(value, false)
 			valueType = "ARRAY"
 		}
 		if valueType == "" { // STRING by default
 			if len(value) > 32 {
-				return "", newError("Too long string value in condition - " + value)
+				return "", nil, nil, newError("Too long string value in condition - " + value)
 			}
 
 			value = addPGQuotes(value)
 		}
+	}
+	value = strings.TrimRight(value, ",")
+
+	// handle separate query+args implementation
+	if condIndex != nil && valueType != "NULL" {
+		switch valueType {
+		case "INT":
+			v, _ := strconv.Atoi(value)
+			arg = v
+		case "BOOL":
+			v, _ := strconv.ParseBool(value)
+			arg = v
+		default:
+			arg = value
+		}
+
+		value = "$" + strconv.Itoa(*condIndex)
+		condIndex = func(i int)*int{i = *condIndex + 1; return &i}(*condIndex)
 	}
 
 	switch operatorBindings[sep] { // switch operators
 	case "&&": // handle OVERLAPS operator
 		switch valueType {
 		case "ARRAY": // array format
-			cond = field + " " + operatorBindings[sep] + " array[" + strings.TrimRight(arrValue, ",") + "]"
+			cond = field + " " + operatorBindings[sep] + " array[" + value + "]"
 		case "NULL": // unexpected null value
-			return "", newError("Passed unexpected OVERLAPS operator in NULL condition")
+			return "", nil, nil, newError("Passed unexpected OVERLAPS operator in NULL condition")
 		default: // others
 			cond = field + " " + operatorBindings[sep] + " array[" + value + "]"
 		}
@@ -476,11 +516,11 @@ func formCondition(fieldsMap map[string]string, cond string, logicalOperator str
 		case "ARRAY": // array format
 			switch operatorBindings[sep] { // handle operators inside array condition
 			case "=":
-				cond = field + " =" + " any(array[" + strings.TrimRight(arrValue, ",") + "])"
+				cond = field + " =" + " any(array[" + value + "])"
 			case "!=":
-				cond = "not " + field + " =" + " any(array[" + strings.TrimRight(arrValue, ",") + "])"
+				cond = "not " + field + " =" + " any(array[" + value + "])"
 			default:
-				return "", newError("Passed unexpected operator in array condition - " + sep)
+				return "", nil, nil, newError("Passed unexpected operator in array condition - " + sep)
 			}
 		case "NULL": // null values
 			switch nullOperatorBindings[sep] {
@@ -489,7 +529,7 @@ func formCondition(fieldsMap map[string]string, cond string, logicalOperator str
 			case "!=":
 				cond = field + " is not null"
 			default:
-				return "", newError("Passed unexpected operator in NULL condition - " + sep)
+				return "", nil, nil, newError("Passed unexpected operator in NULL condition - " + sep)
 			}
 		default: // others
 			cond = field + " " + operatorBindings[sep] + " " + value
@@ -497,10 +537,10 @@ func formCondition(fieldsMap map[string]string, cond string, logicalOperator str
 	}
 
 	if logicalOperator != "" {
-		return cond + " " + logicalBindings[logicalOperator], nil
+		return cond + " " + logicalBindings[logicalOperator], arg, condIndex, nil
 	}
 
-	return cond, nil
+	return cond, arg, condIndex, nil
 }
 
 // handleArrCondValues preprocess values inside query condition

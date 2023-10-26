@@ -12,6 +12,7 @@
 - [Типы логических операторов](#типы-логических-операторов)
 - [Блок fields](#блок-fields)
 - [Блок conditions](#блок-conditions)
+- [Блок conditions (с аргументами)](#блок-conditions-(аргументы))
 - [Блок restrictions](#блок-restrictions)
 - [TO-DO](#to-do)
 
@@ -58,9 +59,10 @@ __UPDATE 0.4.1__
 __UPDATE 0.5.0__
 Запрос компиляции *Compile* разделен на основной запрос *Get* и поисковый *Search*. Примеры вызовов запроса *Search* описаны в отдельном блоке
 
-__UPDATE 0.7.0__
-Компиляцям *Get* и *Search* добавлены альтернативные методы - *EncryptedGet* и *EncryptedSearch*, преднызначенные для обработки зашифрованных параметров запросов (__params__ и __searchParams__).
-Параметры должны быть закодированы через AES GCM с 128-битным ключом. Других отличий от родительских у зашифрованных методов нет.
+__UPDATE 0.7.1__
+Добавлена возможность раздельного формирования запроса и параметров блока условий для постобработки и безопасной передачи в стандартный пакет GO - database/sql.
+Данная опция активируется при вызове *Get* или *Search* и передаче withArgs = true. Примеры запросов сформированных запросов и аргументов приведены в отдельном блоке
+этого документа.
 
 ## Формат запроса
 
@@ -238,6 +240,71 @@ select q.id from v_test q where q.id is not null and q.title is null
 "[SQaLice] Passed unexpected operator in NULL condition - <"
 ```
 
+## Блок __conditions__ (аргументы)
+
+__UPDATE 0.7.1__
+
+Добавлен блок раздельного получения параметров и тела запроса к БД. В блоке условий запроса значения величин заменяются аргументами-плейсхолдерами ($1, $2 и т.д).
+Сами аргументы выдаются в ответе компилятора массивом, по последовательному порядку плейсхолдеров запроса.
+
+### Примеры запросов с возратом аргументов
+
+#### Запрос с одним условием
+
+```http
+http://url/.../query=?ID==1?
+```
+
+```sql
+select q.id, q.content, q.count, q.extra_field, q.is_bool, q.one_more_field from v_test q where q.id = $1
+```
+
+```go
+[1]
+```
+
+#### Запрос с несколькими условиями
+
+```http
+http://url/.../query=ID?(ID==1,2,3||content!=new)*isBool==true?ID,desc,10,0
+```
+
+```sql
+select q.id from v_test q where (q.id = any(array[$1]) or q.content != $2) and q.is_bool = $3 order by q.id desc limit 10 offset 0
+```
+
+```go
+["1,2,3", "'new'", true]
+```
+
+#### Запрос с несколькими условиями 2
+
+```http
+http://url/.../query=isBool?(ID==null||content!=new)*(isBool==true)?ID,desc,10,0
+```
+
+```sql
+select q.is_bool from v_test q where (q.id is null or q.content != $1) and (q.is_bool = $2) order by q.id desc limit 10 offset 0
+```
+
+```go
+[nil, "'new'", true]
+```
+
+#### Запрос с вложенным полем в условии
+
+```http
+http://url/.../query=ID?content==content^^smth?
+```
+
+```sql
+select q.id from v_test q where q.content->>'content' = $1
+```
+
+```go
+["'smth'"]
+```
+
 ## Блок __restrictions__
 
 В данном блоке возможно указание ограничений конечной выборки. Допускается передача пустого блока ограничений, в таком случае SQaLice не накладывает дополнительных условий на выборку.
@@ -317,6 +384,8 @@ __UPDATE 0.5.5__
 
 ## Примеры построения поисковых запросов
 
+### Примеры полной сборки запроса
+
 Запрос с пустыми основными параметрами и поиском по одному полю:
 
 ```http
@@ -371,6 +440,36 @@ select q.id, q.content, q.extra_field from v_test q where (q.content->>'extraFie
 
 ```go
 "[SQaLice] Passed unexpected field name in search condition - extra_Field"
+```
+
+### Примеры сборки запроса с массивом аргументов
+
+#### Запрос 1 + 1
+
+```http
+http://url/.../query=content?ID!=1?ID,asc,,&searchQuery=ID~~1
+```
+
+```sql
+select q.content from v_test q where (lower(q.id::text) like $1) and q.id != $2 order by q.id asc
+```
+
+```go
+["'%1%'", 1]
+```
+
+#### Запрос по множеству полей
+
+```http
+http://url/.../query=ID?(ID==1,2,13||isBool==true)*content!=anth?&searchQuery=ID~~1||content~~smth
+```
+
+```sql
+select q.id from v_test q where (lower(q.id::text) like $1 or lower(q.content::text) like $2) and (q.id = any(array[$3]) or q.is_bool = $4) and q.content != $5
+```
+
+```go
+["'%1%'", "'%smth%'", "1,2,13", true, "'anth'"]
 ```
 
 ## Описание методов парсинга запроса
