@@ -4,6 +4,8 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/lib/pq"
 )
 
 // Logical bindings between SQaLice and PG
@@ -572,9 +574,9 @@ func handleArgValue(value, valueType string, condIndex *int) (ar interface{}, va
 				v, _ := strconv.Atoi(el)
 				intArr = append(intArr, v)
 			}
-			arg = intArr
+			arg = pq.Array(intArr)
 		} else {
-			arg = arrValues
+			arg = pq.Array(arrValues)
 		}
 	case "INT":
 		v, _ := strconv.Atoi(value)
