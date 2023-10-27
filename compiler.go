@@ -404,7 +404,7 @@ func formCondition(fieldsMap map[string]string, cond, logicalOperator string, is
 			f = "lower(q." + f + `::text) like `
 		}
 
-		value := "'%" + pruneInjections(condParts[1], true) + "%'"
+		value := "%" + pruneInjections(condParts[1], true) + "%"
 		if condIndex != nil {
 			v, err := strconv.Atoi(value)
 			if err == nil {
@@ -480,7 +480,7 @@ func formCondition(fieldsMap map[string]string, cond, logicalOperator string, is
 		}
 
 		if valueType == "" {
-			value = `'` + nestedArr[1] + `'`
+			value = nestedArr[1]
 			valueType = "STRING"
 		}
 	} else {
@@ -508,7 +508,7 @@ func formCondition(fieldsMap map[string]string, cond, logicalOperator string, is
 				return "", nil, nil, newError("Too long string value in condition - " + value)
 			}
 
-			value = addPGQuotes(value)
+			// value = addPGQuotes(value)
 		}
 	}
 	value = strings.TrimRight(value, ",")
@@ -599,7 +599,7 @@ func handleArrCondValues(value string, isNestedJson bool) string {
 	var respValue string
 	for _, v := range arrValues {
 		if isNestedJson {
-			respValue = respValue + addPGQuotes(v) + ","
+			respValue = respValue + v + ","
 		} else {
 			_, err := strconv.ParseBool(v)
 			if err == nil {
@@ -611,7 +611,7 @@ func handleArrCondValues(value string, isNestedJson bool) string {
 				respValue = respValue + v + ","
 				continue
 			}
-			respValue = respValue + addPGQuotes(v) + ","
+			respValue = respValue + v + ","
 		}
 	}
 
