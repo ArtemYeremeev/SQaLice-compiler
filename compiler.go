@@ -417,7 +417,7 @@ func formCondition(fieldsMap map[string]string, cond, logicalOperator string, is
 			}
 
 			if arg == nil {
-				arg = value
+				arg = strings.ToLower(value)
 			}
 
 			value = "$" + strconv.Itoa(*condIndex)
