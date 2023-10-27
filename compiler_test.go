@@ -148,8 +148,8 @@ var testGetCases = []struct {
 		WithCount: true,
 		WithArgs:  false,
 
-		MainQuery:  "select q.id from v_test q where q.content && array['value']",
-		CountQuery: "select count(*) from (select 1 from v_test q where q.content && array['value']) q",
+		MainQuery:  "select q.id from v_test q where q.content && any('value')",
+		CountQuery: "select count(*) from (select 1 from v_test q where q.content && any('value')) q",
 		Err:        newError(""),
 	},
 	{ // 13 Test conditions params block with OVERLAPS operator and muliple values
@@ -158,8 +158,8 @@ var testGetCases = []struct {
 		WithCount: true,
 		WithArgs:  false,
 
-		MainQuery:  "select q.id, q.count from v_test q where q.content && array['value1','value2',true,14] and q.id = 25 limit 10 offset 0",
-		CountQuery: "select count(*) from (select 1 from v_test q where q.content && array['value1','value2',true,14] and q.id = 25) q",
+		MainQuery:  "select q.id, q.count from v_test q where q.content && any('value1','value2',true,14) and q.id = 25 limit 10 offset 0",
+		CountQuery: "select count(*) from (select 1 from v_test q where q.content && any('value1','value2',true,14) and q.id = 25) q",
 		Err:        newError(""),
 	},
 	{ // 14. Test restrictions params block with all restrictions
@@ -738,8 +738,8 @@ var testSearchCases = []struct {
 		WithArgs:     true,
 		SearchParams: "content~~smth",
 
-		MainQuery:    "select q.content from v_test q where (lower(q.content::text) like $1) and q.content && array[$2]",
-		CountQuery:   "select count(*) from (select 1 from v_test q where (lower(q.content::text) like $1) and q.content && array[$2]) q",
+		MainQuery:    "select q.content from v_test q where (lower(q.content::text) like $1) and q.content && any($2)",
+		CountQuery:   "select count(*) from (select 1 from v_test q where (lower(q.content::text) like $1) and q.content && any($2)) q",
 		Args:         []interface{}{"'%smth%'", []int{1,2}},
 		Err:          newError(""),
 	},
