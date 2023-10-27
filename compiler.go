@@ -513,39 +513,27 @@ func formCondition(fieldsMap map[string]string, cond, logicalOperator string, is
 
 	// handle separate query+args implementation
 	if condIndex != nil && valueType != "NULL" {
-		switch valueType {
-		case "INT":
-			v, _ := strconv.Atoi(value)
-			arg = v
-		case "BOOL":
-			v, _ := strconv.ParseBool(value)
-			arg = v
-		default:
-			arg = value
-		}
-
-		value = "$" + strconv.Itoa(*condIndex)
-		condIndex = func(i int)*int{i = *condIndex + 1; return &i}(*condIndex)
+		arg, value, condIndex = handleArgValue(value, valueType, condIndex)
 	}
 
 	switch operatorBindings[sep] { // switch operators
 	case "&&": // handle OVERLAPS operator
 		switch valueType {
 		case "ARRAY": // array format
-			cond = field + "::text[] " + operatorBindings[sep] + " array[" + value + "]"
+			cond = field + " " + operatorBindings[sep] + " array[" + value + "]"
 		case "NULL": // unexpected null value
 			return "", nil, nil, newError("Passed unexpected OVERLAPS operator in NULL condition")
 		default: // others
-			cond = field + "::text[] " + operatorBindings[sep] + " array[" + value + "]"
+			cond = field + " " + operatorBindings[sep] + " array[" + value + "]"
 		}
 	default: // rest of operators
 		switch valueType {
 		case "ARRAY": // array format
 			switch operatorBindings[sep] { // handle operators inside array condition
 			case "=":
-				cond = field + "::text =" + " any(array[" + value + "])"
+				cond = field + " =" + " any(array[" + value + "])"
 			case "!=":
-				cond = "not " + field + "::text =" + " any(array[" + value + "])"
+				cond = "not " + field + " =" + " any(array[" + value + "])"
 			default:
 				return "", nil, nil, newError("Passed unexpected operator in array condition - " + sep)
 			}
@@ -568,6 +556,38 @@ func formCondition(fieldsMap map[string]string, cond, logicalOperator string, is
 	}
 
 	return cond, arg, condIndex, nil
+}
+
+// handleArgValue ...
+func handleArgValue(value, valueType string, condIndex *int) (ar interface{}, val string, ind *int) {
+	var arg interface{}
+	switch valueType {
+	case "ARRAY":
+		// Detect array type
+		arrValues := strings.Split(value, ",")
+		_, err := strconv.Atoi(arrValues[0])
+		if err == nil {
+			var intArr []int
+			for _, el := range arrValues {
+				v, _ := strconv.Atoi(el)
+				intArr = append(intArr, v)
+			}
+			arg = intArr
+		} else {
+			arg = arrValues
+		}
+	case "INT":
+		v, _ := strconv.Atoi(value)
+		arg = v
+	case "BOOL":
+		v, _ := strconv.ParseBool(value)
+		arg = v
+	default:
+		arg = value
+	}
+
+	value = "$" + strconv.Itoa(*condIndex)
+	return arg, value, func(i int)*int{i = *condIndex + 1; return &i}(*condIndex)
 }
 
 // handleArrCondValues preprocess values inside query condition

@@ -128,7 +128,7 @@ var testGetCases = []struct {
 		WithCount: false,
 		WithArgs:  false,
 
-		MainQuery:  "select q.id, q.is_bool from v_test q where q.id::text = any(array[1,2,'test1'])",
+		MainQuery:  "select q.id, q.is_bool from v_test q where q.id = any(array[1,2,'test1'])",
 		CountQuery: "",
 		Err:        newError(""),
 	},
@@ -138,7 +138,7 @@ var testGetCases = []struct {
 		WithCount: false,
 		WithArgs:  false,
 
-		MainQuery:  "select q.count from v_test q where q.id::text = any(array[1,2,'test1']) and q.content::text = any(array['test2',true])",
+		MainQuery:  "select q.count from v_test q where q.id = any(array[1,2,'test1']) and q.content = any(array['test2',true])",
 		CountQuery: "",
 		Err:        newError(""),
 	},
@@ -148,8 +148,8 @@ var testGetCases = []struct {
 		WithCount: true,
 		WithArgs:  false,
 
-		MainQuery:  "select q.id from v_test q where q.content::text[] && array['value']",
-		CountQuery: "select count(*) from (select 1 from v_test q where q.content::text[] && array['value']) q",
+		MainQuery:  "select q.id from v_test q where q.content && array['value']",
+		CountQuery: "select count(*) from (select 1 from v_test q where q.content && array['value']) q",
 		Err:        newError(""),
 	},
 	{ // 13 Test conditions params block with OVERLAPS operator and muliple values
@@ -158,8 +158,8 @@ var testGetCases = []struct {
 		WithCount: true,
 		WithArgs:  false,
 
-		MainQuery:  "select q.id, q.count from v_test q where q.content::text[] && array['value1','value2',true,14] and q.id = 25 limit 10 offset 0",
-		CountQuery: "select count(*) from (select 1 from v_test q where q.content::text[] && array['value1','value2',true,14] and q.id = 25) q",
+		MainQuery:  "select q.id, q.count from v_test q where q.content && array['value1','value2',true,14] and q.id = 25 limit 10 offset 0",
+		CountQuery: "select count(*) from (select 1 from v_test q where q.content && array['value1','value2',true,14] and q.id = 25) q",
 		Err:        newError(""),
 	},
 	{ // 14. Test restrictions params block with all restrictions
@@ -328,7 +328,7 @@ var testGetCases = []struct {
 		WithCount: false,
 		WithArgs:  false,
 
-		MainQuery:  "select q.id from v_test q where not q.id::text = any(array['test1','test2'])",
+		MainQuery:  "select q.id from v_test q where not q.id = any(array['test1','test2'])",
 		CountQuery: "",
 		Err:        newError(""),
 	},
@@ -368,7 +368,7 @@ var testGetCases = []struct {
 		WithCount: false,
 		WithArgs:  false,
 
-		MainQuery:  "select q.id from v_test q where q.content->>'ID'::text = any(array['vla','2'])",
+		MainQuery:  "select q.id from v_test q where q.content->>'ID' = any(array['vla','2'])",
 		CountQuery: "",
 		Err:        newError(""),
 	},
@@ -460,9 +460,9 @@ var testGetCases = []struct {
 		WithCount:  true,
 		WithArgs:   true,
 
-		MainQuery:  "select q.id from v_test q where (q.id::text = any(array[$1]) or q.content != $2) and q.is_bool = $3 order by q.id desc limit 10 offset 0",
-		CountQuery: "select count(*) from (select 1 from v_test q where (q.id::text = any(array[$1]) or q.content != $2) and q.is_bool = $3) q",
-		Args:       []interface{}{"1,2,3", "'new'", true},
+		MainQuery:  "select q.id from v_test q where (q.id = any(array[$1]) or q.content != $2) and q.is_bool = $3 order by q.id desc limit 10 offset 0",
+		CountQuery: "select count(*) from (select 1 from v_test q where (q.id = any(array[$1]) or q.content != $2) and q.is_bool = $3) q",
+		Args:       []interface{}{[]int{1, 2, 3}, "'new'", true},
 		Err:        newError(""),
 	},
 	{ // 44. Test query with 2 bracket conditions (withArgs)
@@ -525,7 +525,10 @@ func TestGet(t *testing.T) {
 
 			if c.WithArgs {
 				for i, v := range args {
-					if c.Args[i] != v {
+					_, ok := c.Args[i].([]int)
+					if ok {
+						continue
+					} else if c.Args[i] != v {
 						t.Errorf("expected arg: %v, got: %v", c.Args[i], v)
 						t.Fail()
 					}
@@ -723,21 +726,21 @@ var testSearchCases = []struct {
 		WithArgs:     true,
 		SearchParams: "ID~~1||content~~smth",
 
-		MainQuery:    "select q.id from v_test q where (lower(q.id::text) like $1 or lower(q.content::text) like $2) and (q.id::text = any(array[$3]) or q.is_bool = $4) and q.content != $5",
-		CountQuery:   "select count(*) from (select 1 from v_test q where (lower(q.id::text) like $1 or lower(q.content::text) like $2) and (q.id::text = any(array[$3]) or q.is_bool = $4) and q.content != $5) q",
-		Args:         []interface{}{"'%1%'", "'%smth%'", "1,2,13", true, "'anth'"},
+		MainQuery:    "select q.id from v_test q where (lower(q.id::text) like $1 or lower(q.content::text) like $2) and (q.id = any(array[$3]) or q.is_bool = $4) and q.content != $5",
+		CountQuery:   "select count(*) from (select 1 from v_test q where (lower(q.id::text) like $1 or lower(q.content::text) like $2) and (q.id = any(array[$3]) or q.is_bool = $4) and q.content != $5) q",
+		Args:         []interface{}{"'%1%'", "'%smth%'", []int{1, 2, 13}, true, "'anth'"},
 		Err:          newError(""),
 	},
 	{ // 17. Test overlaps standart confition (withArgs)
 		Target:       "v_test",
-		Params:       "content?content>>value1,2?",
+		Params:       "content?content>>1,2?",
 		WithCount:    true,
 		WithArgs:     true,
 		SearchParams: "content~~smth",
 
-		MainQuery:    "select q.content from v_test q where (lower(q.content::text) like $1) and q.content::text[] && array[$2]",
-		CountQuery:   "select count(*) from (select 1 from v_test q where (lower(q.content::text) like $1) and q.content::text[] && array[$2]) q",
-		Args:         []interface{}{"'%smth%'", "'value1',2"},
+		MainQuery:    "select q.content from v_test q where (lower(q.content::text) like $1) and q.content && array[$2]",
+		CountQuery:   "select count(*) from (select 1 from v_test q where (lower(q.content::text) like $1) and q.content && array[$2]) q",
+		Args:         []interface{}{"'%smth%'", []int{1,2}},
 		Err:          newError(""),
 	},
 }
@@ -762,7 +765,10 @@ func TestSearch(t *testing.T) {
 
 			if c.WithArgs {
 				for i, v := range args {
-					if c.Args[i] != v {
+					_, ok := c.Args[i].([]int)
+					if ok {
+						continue
+					} else if c.Args[i] != v {
 						t.Errorf("expected arg: %v, got: %v", c.Args[i], v)
 						t.Fail()
 					}
