@@ -348,7 +348,7 @@ var testGetCases = []struct {
 		WithCount: false,
 		WithArgs:  false,
 
-		MainQuery:  "select q.id from v_test q where q.content->>'ID' = '1'",
+		MainQuery:  "select q.id from v_test q where q.content->>'ID' = 1",
 		CountQuery: "",
 		Err:        newError(""),
 	},
