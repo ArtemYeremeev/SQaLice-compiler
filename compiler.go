@@ -533,9 +533,9 @@ func formCondition(fieldsMap map[string]string, cond, logicalOperator string, is
 		case "ARRAY": // array format
 			switch operatorBindings[sep] { // handle operators inside array condition
 			case "=":
-				cond = field + " =" + " any(array[" + value + "])"
+				cond = field + " =" + " any(" + value + ")"
 			case "!=":
-				cond = "not " + field + " =" + " any(array[" + value + "])"
+				cond = "not " + field + " =" + " any(" + value + ")"
 			default:
 				return "", nil, nil, newError("Passed unexpected operator in array condition - " + sep)
 			}

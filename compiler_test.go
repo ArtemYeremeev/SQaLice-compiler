@@ -128,7 +128,7 @@ var testGetCases = []struct {
 		WithCount: false,
 		WithArgs:  false,
 
-		MainQuery:  "select q.id, q.is_bool from v_test q where q.id = any(array[1,2,'test1'])",
+		MainQuery:  "select q.id, q.is_bool from v_test q where q.id = any(1,2,'test1')",
 		CountQuery: "",
 		Err:        newError(""),
 	},
@@ -138,7 +138,7 @@ var testGetCases = []struct {
 		WithCount: false,
 		WithArgs:  false,
 
-		MainQuery:  "select q.count from v_test q where q.id = any(array[1,2,'test1']) and q.content = any(array['test2',true])",
+		MainQuery:  "select q.count from v_test q where q.id = any(1,2,'test1') and q.content = any('test2',true)",
 		CountQuery: "",
 		Err:        newError(""),
 	},
@@ -328,7 +328,7 @@ var testGetCases = []struct {
 		WithCount: false,
 		WithArgs:  false,
 
-		MainQuery:  "select q.id from v_test q where not q.id = any(array['test1','test2'])",
+		MainQuery:  "select q.id from v_test q where not q.id = any('test1','test2')",
 		CountQuery: "",
 		Err:        newError(""),
 	},
@@ -368,7 +368,7 @@ var testGetCases = []struct {
 		WithCount: false,
 		WithArgs:  false,
 
-		MainQuery:  "select q.id from v_test q where q.content->>'ID' = any(array['vla','2'])",
+		MainQuery:  "select q.id from v_test q where q.content->>'ID' = any('vla','2')",
 		CountQuery: "",
 		Err:        newError(""),
 	},
@@ -460,8 +460,8 @@ var testGetCases = []struct {
 		WithCount:  true,
 		WithArgs:   true,
 
-		MainQuery:  "select q.id from v_test q where (q.id = any(array[$1]) or q.content != $2) and q.is_bool = $3 order by q.id desc limit 10 offset 0",
-		CountQuery: "select count(*) from (select 1 from v_test q where (q.id = any(array[$1]) or q.content != $2) and q.is_bool = $3) q",
+		MainQuery:  "select q.id from v_test q where (q.id = any($1) or q.content != $2) and q.is_bool = $3 order by q.id desc limit 10 offset 0",
+		CountQuery: "select count(*) from (select 1 from v_test q where (q.id = any($1) or q.content != $2) and q.is_bool = $3) q",
 		Args:       []interface{}{[]int{1, 2, 3}, "'new'", true},
 		Err:        newError(""),
 	},
@@ -726,8 +726,8 @@ var testSearchCases = []struct {
 		WithArgs:     true,
 		SearchParams: "ID~~1||content~~smth",
 
-		MainQuery:    "select q.id from v_test q where (lower(q.id::text) like $1 or lower(q.content::text) like $2) and (q.id = any(array[$3]) or q.is_bool = $4) and q.content != $5",
-		CountQuery:   "select count(*) from (select 1 from v_test q where (lower(q.id::text) like $1 or lower(q.content::text) like $2) and (q.id = any(array[$3]) or q.is_bool = $4) and q.content != $5) q",
+		MainQuery:    "select q.id from v_test q where (lower(q.id::text) like $1 or lower(q.content::text) like $2) and (q.id = any($3) or q.is_bool = $4) and q.content != $5",
+		CountQuery:   "select count(*) from (select 1 from v_test q where (lower(q.id::text) like $1 or lower(q.content::text) like $2) and (q.id = any($3) or q.is_bool = $4) and q.content != $5) q",
 		Args:         []interface{}{"'%1%'", "'%smth%'", []int{1, 2, 13}, true, "'anth'"},
 		Err:          newError(""),
 	},
