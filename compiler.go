@@ -532,20 +532,20 @@ func formCondition(fieldsMap map[string]string, cond, logicalOperator string, is
 	case "&&": // handle OVERLAPS operator
 		switch valueType {
 		case "ARRAY": // array format
-			cond = field + " " + operatorBindings[sep] + " array[" + value + "]"
+			cond = field + "::text[] " + operatorBindings[sep] + " array[" + value + "]"
 		case "NULL": // unexpected null value
 			return "", nil, nil, newError("Passed unexpected OVERLAPS operator in NULL condition")
 		default: // others
-			cond = field + " " + operatorBindings[sep] + " array[" + value + "]"
+			cond = field + "::text[] " + operatorBindings[sep] + " array[" + value + "]"
 		}
 	default: // rest of operators
 		switch valueType {
 		case "ARRAY": // array format
 			switch operatorBindings[sep] { // handle operators inside array condition
 			case "=":
-				cond = field + " =" + " any(array[" + value + "])"
+				cond = field + "::text =" + " any(array[" + value + "])"
 			case "!=":
-				cond = "not " + field + " =" + " any(array[" + value + "])"
+				cond = "not " + field + "::text =" + " any(array[" + value + "])"
 			default:
 				return "", nil, nil, newError("Passed unexpected operator in array condition - " + sep)
 			}
