@@ -404,7 +404,20 @@ func formCondition(fieldsMap map[string]string, cond, logicalOperator string, is
 
 		value := "'%" + pruneInjections(condParts[1], true) + "%'"
 		if condIndex != nil {
-			arg = value
+			v, err := strconv.Atoi(value)
+			if err == nil {
+				arg = v
+			}
+
+			b, err := strconv.ParseBool(value)
+			if err == nil {
+				arg = b
+			}
+
+			if arg == nil {
+				arg = value
+			}
+
 			value = "$" + strconv.Itoa(*condIndex)
 			condIndex = func(i int)*int{i = *condIndex + 1; return &i}(*condIndex)
 		}
