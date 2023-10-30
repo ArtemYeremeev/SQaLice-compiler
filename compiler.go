@@ -495,7 +495,7 @@ func formCondition(fieldsMap map[string]string, cond, logicalOperator string, is
 		valueType = "BOOL"
 	default:
 		_, err := strconv.Atoi(value) // INTEGER
-		if err == nil {
+		if err == nil && sep != ">>" {
 			valueType = "INT"
 		}
 
