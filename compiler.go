@@ -462,7 +462,7 @@ func formCondition(fieldsMap map[string]string, cond, logicalOperator string, is
 	nestedArr := strings.Split(value, "^^")
 	if nestedArr[0] != value {
 		field = "q." + f + operatorBindings["->>"] + `'` + nestedArr[0] + `'`
-		if strings.Contains(nestedArr[1], ",") { // handle nested JSONB array value
+		if strings.Contains(nestedArr[1], ",") || sep == ">>" { // handle nested JSONB array value
 			value = handleArrCondValues(nestedArr[1], false)
 			valueType = "ARRAY"
 		}
@@ -499,7 +499,7 @@ func formCondition(fieldsMap map[string]string, cond, logicalOperator string, is
 			valueType = "INT"
 		}
 
-		if valueType == "" && strings.Contains(value, ",") { // ARRAY
+		if valueType == "" && (strings.Contains(value, ",") || sep == ">>") { // ARRAY
 			value = handleArrCondValues(value, false)
 			valueType = "ARRAY"
 		}
