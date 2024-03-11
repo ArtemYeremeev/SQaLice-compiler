@@ -130,9 +130,9 @@ func GetConditionByName(model interface{}, q string, fieldName string, toDBForma
 }
 
 // GetSortField returns selection sort field from query
-func GetSortField(model interface{}, q string) (field string, err error) {
+func GetSortField(model interface{}, q string) (fields []string, err error) {
 	if q == "" {
-		return "", newError("Query string not passed")
+		return nil, newError("Query string not passed")
 	}
 
 	// form fields map with formDinamicModel
@@ -140,19 +140,24 @@ func GetSortField(model interface{}, q string) (field string, err error) {
 
 	restsBlock := strings.Split(q, "?")[2]
 	if restsBlock == "" { // if condsBlock is empty then sort field not passed
-		return "", nil
+		return nil, nil
 	}
-	f := strings.Split(restsBlock, ",")[0]
-	if f == "" {
-		return "", nil // if field is empty then sort field not passed
-	}
-
-	sortField := fieldsMap[f]
-	if sortField == "" {
-		return "", newError("Passed unexpected selection order field - " + f)
+	flds := strings.Split(restsBlock, ",")[0]
+	if flds == "" {
+		return nil, nil // if field is empty then sort field not passed
 	}
 
-	return sortField, nil
+	var respFields []string
+	for _, f := range strings.Split(flds, ";") {
+		sortField := fieldsMap[f]
+		if sortField == "" {
+			return nil, newError("Passed unexpected selection order field - " + f)
+		}
+
+		respFields = append(respFields, sortField)
+	}
+
+	return respFields, nil
 }
 
 // GetSortOrder returns selection order from query
@@ -210,7 +215,11 @@ func GetOffset(q string) (limit *int, err error) {
 	if restsBlock == "" { // if condsBlock is empty then offset not passed
 		return nil, nil
 	}
+
 	o := strings.Split(restsBlock, ",")[3]
+	if o == "" {
+		o = "0"
+	}
 
 	respOffset, err := strconv.Atoi(o)
 	if err != nil {
@@ -377,7 +386,7 @@ func DeleteQueryCondition(model interface{}, query, condName string) (string, er
 
 // AddQueryRestrictions adds restrictions to query restrictions block instead of current
 // If argument is not passed, query saves current parameter
-func AddQueryRestrictions(query string, sortField string, sortOrder string, limit string, offset string) (string, error) {
+func AddQueryRestrictions(query string, sortFields string, sortOrder string, limit string, offset string) (string, error) {
 	if query == "" {
 		return query, newError("Passed empty query for forming restrictions block")
 	}
@@ -391,9 +400,9 @@ func AddQueryRestrictions(query string, sortField string, sortOrder string, limi
 		currentRests = strings.Split(queryBlocks[2], ",")
 	}
 
-	// sortField
-	if sortField != "" {
-		currentRests[0] = sortField
+	// sortFields
+	if sortFields != "" {
+		currentRests[0] = sortFields
 	}
 	// sortOrder
 	if sortOrder != "" && (sortOrder == "asc" || sortOrder == "desc") {

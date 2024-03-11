@@ -230,7 +230,7 @@ var testGetRestsCases = []struct {
 	// Query params
 	Query string
 	// Response
-	Field  string
+	Fields []string
 	Order  string
 	Limit  int
 	Offset int
@@ -238,26 +238,41 @@ var testGetRestsCases = []struct {
 }{
 	{ // 1. Test query with full rests block
 		Query:  "??ID,asc,10,0",
-		Field:  "id",
+		Fields: []string{"id"},
 		Order:  "asc",
 		Limit:  10,
 		Offset: 0,
+		Err:    newError(""),
+	},
+	{ // 2. Test query with multiple fields in rests
+		Query:  "??ID;isBool,desc,10,",
+		Fields: []string{"id", "is_bool"},
+		Order:  "desc",
+		Limit:  10,
+		Offset: 0,
+		Err:    newError(""),
 	},
 }
 
 func TestGetSortField(t *testing.T) {
 	for index, c := range testGetRestsCases {
 		t.Run(strconv.Itoa(index+1), func(t *testing.T) {
-			field, err := GetSortField(TestModel{}, c.Query)
+			fields, err := GetSortField(TestModel{}, c.Query)
 			if err != nil && c.Err.Error() != err.Error() {
 				t.Errorf("expected err: %v, got: %v", c.Err, err)
 				t.FailNow()
 			}
 
-			// Handle empty struct
-			if field != c.Field {
-				t.Errorf("Expected sort field: %v, got: %v", c.Field, field)
+			if len(fields) != len(c.Fields) {
+				t.Errorf("Expected sort fields: %v, got: %v", c.Fields, fields)
 				t.FailNow()
+			}
+
+			for i, f := range fields {
+				if f != c.Fields[i] {
+					t.Errorf("Expected sort field: %v, got: %v", c.Fields[i], f)
+					t.FailNow()
+				}
 			}
 		})
 	}
@@ -537,28 +552,28 @@ var testDeleteQueryConditionCases = []struct {
 	RespQuery string
 }{
 	{ // 1. Test unit condition delete
-		Query: "?ID==1?",
-		CondName: "ID",
+		Query:     "?ID==1?",
+		CondName:  "ID",
 		RespQuery: "??",
 	},
 	{ // 2. Test bracket condition delete
-		Query: "?(ID==1)*name==smth?",
-		CondName: "ID",
+		Query:     "?(ID==1)*name==smth?",
+		CondName:  "ID",
 		RespQuery: "?name==smth?",
 	},
 	{ // 3. Test non-bracket condition delete from set
-		Query: "?ID==1||name==smth*count==1?",
-		CondName: "name",
+		Query:     "?ID==1||name==smth*count==1?",
+		CondName:  "name",
 		RespQuery: "?ID==1*count==1?",
 	},
 	{ // 4. Test empty conditions set
-		Query: "??",
-		CondName: "name",
+		Query:     "??",
+		CondName:  "name",
 		RespQuery: "??",
 	},
 	{ // 5. Test absent condition
-		Query: "?ID==1?",
-		CondName: "name",
+		Query:     "?ID==1?",
+		CondName:  "name",
 		RespQuery: "?ID==1?",
 	},
 }

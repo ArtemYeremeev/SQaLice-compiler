@@ -206,35 +206,37 @@ func combineRestrictions(fieldsMap map[string]string, rests string) (string, err
 	if rests == "" {
 		return "", nil
 	}
-	restsArray := strings.Split(rests, ",")
+	restsArr := strings.Split(rests, ",")
 	restsBlock := ""
 
-	// field
-	field := restsArray[0]
-	if field != "" {
-		f := fieldsMap[field]
-		if f == "" {
-			return "", newError("Unexpected selection order field - " + field)
-		}
-		restsBlock = "order by q." + f + " "
-	}
-
 	// order
-	order := restsArray[1]
+	order := restsArr[1]
 	if order != "" {
 		if order != "asc" && order != "desc" {
 			return "", newError("Unexpected selection order - " + order)
 		}
+	} else {
+		order = "asc"
+	}
 
-		if restsBlock == "" {
-			restsBlock = "order by q.id " + order
-		} else {
-			restsBlock = restsBlock + order
+	// fields
+	if restsArr[0] != "" {
+		for i, field := range strings.Split(restsArr[0], ";") {
+			f := fieldsMap[field]
+			if f == "" {
+				return "", newError("Unexpected selection order field - " + restsArr[0])
+			}
+
+			if i == 0 {
+				restsBlock = "order by q." + f + " " + order
+			} else {
+				restsBlock = restsBlock + ", q." + f + " " + order
+			}
 		}
 	}
 
 	// limit
-	limit := restsArray[2]
+	limit := restsArr[2]
 	if limit != "" {
 		n, err := strconv.Atoi(limit)
 		if err != nil {
@@ -252,7 +254,7 @@ func combineRestrictions(fieldsMap map[string]string, rests string) (string, err
 	}
 
 	// offset
-	offset := restsArray[3]
+	offset := restsArr[3]
 	if offset != "" {
 		n, err := strconv.Atoi(offset)
 		if err != nil {

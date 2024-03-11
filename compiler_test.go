@@ -178,7 +178,7 @@ var testGetCases = []struct {
 		WithCount: false,
 		WithArgs:  false,
 
-		MainQuery:  "select q.id from v_test q order by q.id",
+		MainQuery:  "select q.id from v_test q order by q.id asc",
 		CountQuery: "select count(*) from (select 1 from v_test q order by q.id) q",
 		Err:        newError(""),
 	},
@@ -494,13 +494,31 @@ var testGetCases = []struct {
 		MainQuery:  "",
 		Err:        newError("Too long string value in condition - content1content2content3content4content5content6content7"),
 	},
-	{ // 47. Test restrictions params block with only order parameter
+	{ // 47. Test restrictions params block with only field parameter
 		Target:    "v_test",
-		Params:    "ID??,desc,,",
+		Params:    "ID??ID,,,",
 		WithCount: false,
 		WithArgs:  false,
 
-		MainQuery:  "select q.id from v_test q order by q.id desc",
+		MainQuery:  "select q.id from v_test q order by q.id asc",
+		Err:        newError(""),
+	},
+	{ // 48. Test restrictions params block with two order fields without order
+		Target:    "v_test",
+		Params:    "ID?content==smth?isBool;ID,,,",
+		WithCount: false,
+		WithArgs:  false,
+
+		MainQuery:  "select q.id from v_test q where q.content = smth order by q.is_bool asc, q.id asc",
+		Err:        newError(""),
+	},
+	{ // 49. Test restrictions params block with two order fields and other order
+		Target:    "v_test",
+		Params:    "ID??ID;isBool,desc,10,0",
+		WithCount: false,
+		WithArgs:  false,
+
+		MainQuery:  "select q.id from v_test q order by q.id desc, q.is_bool desc limit 10 offset 0",
 		Err:        newError(""),
 	},
 }
@@ -625,7 +643,7 @@ var testSearchCases = []struct {
 		WithArgs:     false,
 		SearchParams: "extraField~~ok||content~~something||content~~anything",
 
-		MainQuery:    "select q.id from v_test q where (lower(q.extra_field::text) like %ok% or lower(q.content::text) like %something% or lower(q.content::text) like %anything%) order by q.id",
+		MainQuery:    "select q.id from v_test q where (lower(q.extra_field::text) like %ok% or lower(q.content::text) like %something% or lower(q.content::text) like %anything%) order by q.id asc",
 		CountQuery:   "",
 		Err:          newError(""),
 	},
@@ -741,6 +759,30 @@ var testSearchCases = []struct {
 		MainQuery:    "select q.content from v_test q where (lower(q.content::text) like $1) and q.content && $2",
 		CountQuery:   "select count(*) from (select 1 from v_test q where (lower(q.content::text) like $1) and q.content && $2) q",
 		Args:         []interface{}{"%smth%", []int{1,2}},
+		Err:          newError(""),
+	},
+	{ // 18. Test search with multiple order fields
+		Target:       "v_test",
+		Params:       "content?ID!=1?isBool;ID,,30,",
+		WithCount:    true,
+		WithArgs:     true,
+		SearchParams: "content~~smth",
+
+		MainQuery:    "select q.content from v_test q where (lower(q.content::text) like $1) and q.id != $2 order by q.is_bool asc, q.id asc limit 30",
+		CountQuery:   "select count(*) from (select 1 from v_test q where (lower(q.content::text) like $1) and q.id != $2) q",
+		Args:         []interface{}{"%smth%", 1},
+		Err:          newError(""),
+	},
+	{ // 19. Test search without limit and order fields
+		Target:       "v_test",
+		Params:       "content?ID!=1?,desc,,5",
+		WithCount:    true,
+		WithArgs:     true,
+		SearchParams: "content~~smth",
+
+		MainQuery:    "select q.content from v_test q where (lower(q.content::text) like $1) and q.id != $2 offset 5",
+		CountQuery:   "select count(*) from (select 1 from v_test q where (lower(q.content::text) like $1) and q.id != $2) q",
+		Args:         []interface{}{"%smth%", 1},
 		Err:          newError(""),
 	},
 }
