@@ -221,7 +221,7 @@ func combineRestrictions(fieldsMap map[string]string, rests string) (string, err
 
 	// fields
 	if restsArr[0] != "" {
-		for i, field := range strings.Split(restsArr[0], ";") {
+		for i, field := range strings.Split(restsArr[0], "|") {
 			f := fieldsMap[field]
 			if f == "" {
 				return "", newError("Unexpected selection order field - " + restsArr[0])

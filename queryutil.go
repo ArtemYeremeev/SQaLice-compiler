@@ -148,7 +148,7 @@ func GetSortField(model interface{}, q string) (fields []string, err error) {
 	}
 
 	var respFields []string
-	for _, f := range strings.Split(flds, ";") {
+	for _, f := range strings.Split(flds, "|") {
 		sortField := fieldsMap[f]
 		if sortField == "" {
 			return nil, newError("Passed unexpected selection order field - " + f)

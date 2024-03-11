@@ -332,10 +332,10 @@ http://url/.../query=ID,title,createdAt?ID>1?
 http://url/.../query=ID,title,createdAt?ID>1?ID,asc,10,0
 ```
 
-### Пример запроса с несколькими полями сортировки (разделитель ;)
+### Пример запроса с несколькими полями сортировки (разделитель |)
 
 ```http
-http://url/.../query=ID,title,createdAt?ID>1?ID;isBool,asc,10,0
+http://url/.../query=ID,title,createdAt?ID>1?ID|isBool,asc,10,0
 ```
 
 ### Пример запроса с частью параметров (лимит, оффсет)

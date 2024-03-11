@@ -505,7 +505,7 @@ var testGetCases = []struct {
 	},
 	{ // 48. Test restrictions params block with two order fields without order
 		Target:    "v_test",
-		Params:    "ID?content==smth?isBool;ID,,,",
+		Params:    "ID?content==smth?isBool|ID,,,",
 		WithCount: false,
 		WithArgs:  false,
 
@@ -514,7 +514,7 @@ var testGetCases = []struct {
 	},
 	{ // 49. Test restrictions params block with two order fields and other order
 		Target:    "v_test",
-		Params:    "ID??ID;isBool,desc,10,0",
+		Params:    "ID??ID|isBool,desc,10,0",
 		WithCount: false,
 		WithArgs:  false,
 
@@ -763,7 +763,7 @@ var testSearchCases = []struct {
 	},
 	{ // 18. Test search with multiple order fields
 		Target:       "v_test",
-		Params:       "content?ID!=1?isBool;ID,,30,",
+		Params:       "content?ID!=1?isBool|ID,,30,",
 		WithCount:    true,
 		WithArgs:     true,
 		SearchParams: "content~~smth",

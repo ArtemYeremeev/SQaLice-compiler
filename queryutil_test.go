@@ -245,7 +245,7 @@ var testGetRestsCases = []struct {
 		Err:    newError(""),
 	},
 	{ // 2. Test query with multiple fields in rests
-		Query:  "??ID;isBool,desc,10,",
+		Query:  "??ID|isBool,desc,10,",
 		Fields: []string{"id", "is_bool"},
 		Order:  "desc",
 		Limit:  10,
