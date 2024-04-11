@@ -47,7 +47,7 @@ func GetFieldsList(model interface{}, q string) (fieldsList []string, err error)
 }
 
 // GetConditionsList returns a list of all query conditions in SQL format
-func GetConditionsList(model interface{}, q string, toDBFormat bool) (condExprsList []*CondExpr, err error) {
+func GetConditionsList(model interface{}, q string, toDBFormat bool, isSearch bool) (condExprsList []*CondExpr, err error) {
 	if q == "" {
 		return nil, newError("Query string not passed")
 	}
@@ -56,6 +56,25 @@ func GetConditionsList(model interface{}, q string, toDBFormat bool) (condExprsL
 	var fieldsMap map[string]string
 	if toDBFormat {
 		fieldsMap = formDinamicModel(model)
+	}
+
+	// handle searchQuery conditions
+	if isSearch {
+		var respConds []*CondExpr
+		for _, cond := range regexp.MustCompile("[*|]").Split(q, -1) {
+			if cond == "" {
+				continue
+			}
+
+			var condArr []string
+			if condArr = strings.Split(cond, "~~"); len(condArr) < 2 {
+				return nil, newError("Unsupported searchQuery format")
+			}
+
+			respConds = append(respConds, &CondExpr{FieldName: condArr[0], Operator:  "~~", Value: condArr[1]})
+		}
+
+		return respConds, nil
 	}
 
 	condsBlock := strings.Split(q, "?")[1]

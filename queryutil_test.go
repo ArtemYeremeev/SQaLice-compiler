@@ -74,21 +74,25 @@ func isSlicesEqual(a, b []string) bool {
 
 var testGetConditionsListCases = []struct {
 	// Query params
-	Query string
+	Query     string
+	IsSearch  bool
 	// Response
 	CondExprsList []*CondExpr
 	Err           error
 }{
 	{ // 1. Test single condition extraction
 		Query:         "?ID==1?",
+		IsSearch: false,
 		CondExprsList: []*CondExpr{{FieldName: "id", Operator: "=", Value: "1", IsBracket: false}},
 	},
 	{ // 2. Test multiple conditions extraction
 		Query:         "?ID>=1*count!=2?",
+		IsSearch:      false,
 		CondExprsList: []*CondExpr{{FieldName: "id", Operator: ">=", Value: "1", IsBracket: false}, {FieldName: "count", Operator: "!=", Value: "2", IsBracket: false}},
 	},
 	{ // 3. Test query with complex conditions block
 		Query: "?(ID>>1,2,3)*content==testText*count!=2?",
+		IsSearch: false,
 		CondExprsList: []*CondExpr{
 			{FieldName: "id", Operator: "&&", Value: "1,2,3", IsBracket: true},
 			{FieldName: "content", Operator: "=", Value: "testText", IsBracket: false},
@@ -97,19 +101,31 @@ var testGetConditionsListCases = []struct {
 	},
 	{ // 4. Test query with empty conds block
 		Query:         "??",
+		IsSearch:      false,
 		CondExprsList: nil,
 	},
 	{ // 5. Test ERROR empty query
 		Query:         "",
+		IsSearch:      false,
 		CondExprsList: nil,
 		Err:           newError("Query string not passed"),
+	},
+	{ // 6. Test correct searchQuery
+		Query:    "content~~test||content~~notext",
+		IsSearch: true,
+		CondExprsList: []*CondExpr{{FieldName: "content", Operator: "~~", Value: "test"}, {FieldName: "content", Operator: "~~", Value: "notext"}},
+	},
+	{ // 7. Test wrong searchQuery
+		Query:    "?ID==1*count==2?",
+		IsSearch: true,
+		Err:      newError("Unsupported searchQuery format"),
 	},
 }
 
 func TestGetConditionsList(t *testing.T) {
 	for index, c := range testGetConditionsListCases {
 		t.Run(strconv.Itoa(index+1), func(t *testing.T) {
-			condsList, err := GetConditionsList(TestModel{}, c.Query, true)
+			condsList, err := GetConditionsList(TestModel{}, c.Query, true, c.IsSearch)
 			if err != nil && c.Err.Error() != err.Error() {
 				t.Errorf("expected err: %v, got: %v", c.Err, err)
 				t.FailNow()
