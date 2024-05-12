@@ -37,40 +37,10 @@ func Get(model interface{}, target, params string, withCount, withArgs bool) (ma
 	return compile(model, target, params, withCount, withArgs, "")
 }
 
-/* // EncryptedGet builds a GET query with encrypted params
-func EncryptedGet(model interface{}, target, params string, withCount, withArgs bool, key string) (mainQ, countQ string, args []interface{}, er error) {
-	return compile(model, target, decryptParams(params, key), withCount, withArgs, "")
-} */
-
 // Search builds a GET query with LIKE filter on searchField
 func Search(model interface{}, target, params string, withCount, withArgs bool, searchParams string) (mainQ, countQ string, args []interface{}, er error) {
 	return compile(model, target, params, withCount, withArgs, searchParams)
 }
-
-/* // EncryptedSearch builds a GET query with LIKE filter on searchField with decrypted params and searchParams
-func EncryptedSearch(model interface{}, target, params string, withCount, withArgs bool, searchParams, key string) (mainQ, countQ string, args []interface{}, er error) {
-	return compile(model, target, decryptParams(params, key), withCount, withArgs, decryptParams(searchParams, key))
-}
-
-// decryptParams filter query through AES key
-func decryptParams(params, key string) string {
-	cp, err := aes.NewCipher([]byte(key))
-	if err != nil {
-		return params
-	}
-
-	c, err := cipher.NewGCM(cp)
-	if err != nil {
-		return params
-	}
-
-	r, err := c.Open(nil, []byte(params)[:c.NonceSize()], []byte(params)[c.NonceSize():], nil)
-	if err != nil {
-		return params
-	}
-
-	return string(r[:])
-} */
 
 // compile assembles a query strings to PG database for main query and count query
 func compile(model interface{}, target, params string, withCount, withArgs bool, searchParams string) (mainQ, countQ string, args []interface{}, er error) {
@@ -285,7 +255,7 @@ func formSearchConditions(fieldsMap map[string]string, params string, condIndex 
 }
 
 func extractConditionsSet(fieldsMap map[string]string, conds string, isSearch bool, condIndex *int) ([]string, []interface{}, *int, error) {
-	bracketSubstrings := regexp.MustCompile(`\((.*?)\)`).FindAllString(conds, -1)
+	bracketSubstrings := regexp.MustCompile(`\(.*?(=|~|\|).*?\)`).FindAllString(conds, -1) // \((.*?)\)
 
 	// Parse logical operators
 	var (
@@ -294,8 +264,7 @@ func extractConditionsSet(fieldsMap map[string]string, conds string, isSearch bo
 		preparedConds []string
 	)
 	for _, brCondSet := range bracketSubstrings {
-		condSet := brCondSet
-		condSet = strings.Trim(condSet, "(")
+		condSet := strings.Trim(brCondSet, "(")
 		condSet = strings.Trim(condSet, ")")
 
 		var (

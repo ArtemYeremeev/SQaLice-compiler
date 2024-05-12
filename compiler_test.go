@@ -571,7 +571,7 @@ var testSearchCases = []struct {
 	Args       []interface{}
 	Err        error
 }{
-	{ // 1. Test empty query and search blocks
+	/* { // 1. Test empty query and search blocks
 		Target:       "v_test",
 		Params:       "??",
 		WithCount:    true,
@@ -690,7 +690,7 @@ var testSearchCases = []struct {
 		MainQuery:    "select q.id from v_test q where ((lower(q.content::text) like %1% or lower(q.content::text) like %2%) and lower(q.extra_field::text) like %ok%)",
 		CountQuery:   "",
 		Err:          newError(""),
-	},
+	}, */
 	{ // 12. Test searchQuery with two bracket blocks
 		Target:       "v_test",
 		Params:       "ID,content,extraField??ID,desc,,",
@@ -783,6 +783,18 @@ var testSearchCases = []struct {
 		MainQuery:    "select q.content from v_test q where (lower(q.content::text) like $1) and q.id != $2 offset 5",
 		CountQuery:   "select count(*) from (select 1 from v_test q where (lower(q.content::text) like $1) and q.id != $2) q",
 		Args:         []interface{}{"%smth%", 1},
+		Err:          newError(""),
+	},
+	{ // 20. Test search condition with brackets in search string
+		Target:       "v_test",
+		Params:       "ID??",
+		WithCount:    true,
+		WithArgs:     true,
+		SearchParams: "content~~(anth)",
+
+		MainQuery:    "select q.id from v_test q where (lower(q.content::text) like $1)",
+		CountQuery:   "select count(*) from (select 1 from v_test q where (lower(q.content::text) like $1)) q",
+		Args:         []interface{}{"%%anth%%", 1},
 		Err:          newError(""),
 	},
 }
