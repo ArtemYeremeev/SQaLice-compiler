@@ -571,7 +571,7 @@ var testSearchCases = []struct {
 	Args       []interface{}
 	Err        error
 }{
-	/* { // 1. Test empty query and search blocks
+	{ // 1. Test empty query and search blocks
 		Target:       "v_test",
 		Params:       "??",
 		WithCount:    true,
@@ -687,10 +687,10 @@ var testSearchCases = []struct {
 		WithArgs:     false,
 		SearchParams: "(content~~1||content~~2)*extraField~~ok",
 
-		MainQuery:    "select q.id from v_test q where ((lower(q.content::text) like %1% or lower(q.content::text) like %2%) and lower(q.extra_field::text) like %ok%)",
+		MainQuery:    "select q.id from v_test q where (lower(q.content::text) like %1% or lower(q.content::text) like %2% and lower(q.extra_field::text) like %ok%)",
 		CountQuery:   "",
 		Err:          newError(""),
-	}, */
+	},
 	{ // 12. Test searchQuery with two bracket blocks
 		Target:       "v_test",
 		Params:       "ID,content,extraField??ID,desc,,",
@@ -698,7 +698,7 @@ var testSearchCases = []struct {
 		WithArgs:     false,
 		SearchParams: "(content~~1||content~~2)*(extraField~~some||extraField~~any)",
 
-		MainQuery:    "select q.id, q.content, q.extra_field from v_test q where ((lower(q.content::text) like %1% or lower(q.content::text) like %2%) and (lower(q.extra_field::text) like %some% or lower(q.extra_field::text) like %any%)) order by q.id desc",
+		MainQuery:    "select q.id, q.content, q.extra_field from v_test q where (lower(q.content::text) like %1% or lower(q.content::text) like %2% and lower(q.extra_field::text) like %some% or lower(q.extra_field::text) like %any%) order by q.id desc",
 		CountQuery:   "",
 		Err:          newError(""),
 	},
@@ -794,7 +794,7 @@ var testSearchCases = []struct {
 
 		MainQuery:    "select q.id from v_test q where (lower(q.content::text) like $1)",
 		CountQuery:   "select count(*) from (select 1 from v_test q where (lower(q.content::text) like $1)) q",
-		Args:         []interface{}{"%%anth%%", 1},
+		Args:         []interface{}{"%anth%", 1},
 		Err:          newError(""),
 	},
 }

@@ -255,6 +255,10 @@ func formSearchConditions(fieldsMap map[string]string, params string, condIndex 
 }
 
 func extractConditionsSet(fieldsMap map[string]string, conds string, isSearch bool, condIndex *int) ([]string, []interface{}, *int, error) {
+	if isSearch {
+		conds = strings.ReplaceAll(conds, "(", "")
+		conds = strings.ReplaceAll(conds, ")", "")
+	}
 	bracketSubstrings := regexp.MustCompile(`\(.*?(=|~|\|).*?\)`).FindAllString(conds, -1) // \((.*?)\)
 
 	// Parse logical operators
