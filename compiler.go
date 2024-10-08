@@ -479,11 +479,9 @@ func formCondition(fieldsMap map[string]string, cond, logicalOperator string, is
 			valueType = "ARRAY"
 		}
 		if valueType == "" { // STRING by default
-			if len(value) > 32 {
+			if len(value) > 48 {
 				return "", nil, nil, newError("Too long string value in condition - " + value)
 			}
-
-			// value = addPGQuotes(value)
 		}
 	}
 	value = strings.TrimRight(value, ",")

@@ -287,7 +287,7 @@ func AddQueryFieldsToSelect(model interface{}, query string, fieldsArray []strin
 // AddQueryConditions adds conditions to query conditions list with AND separators
 // If isDeleteCurrent argument passed, conds list peplacing current query conditions
 // If correct sepOperator passed in condition, compiler use it instead of AND separator
-func AddQueryConditions(query string, conds []CondExpr, isDeleteCurrent bool) (string, error) {
+func AddQueryConditions(query string, conds []CondExpr, isDeleteCurrent, isLeading bool) (string, error) {
 	if query == "" {
 		return query, newError("Passed empty query for forming conditions block")
 	}
@@ -317,6 +317,19 @@ func AddQueryConditions(query string, conds []CondExpr, isDeleteCurrent bool) (s
 		sepOperator := "*"
 		if cond.SepOperator != "" && logicalBindings[sepOperator] != "" {
 			sepOperator = cond.SepOperator
+		}
+
+		if isLeading {
+			if queryBlocks[1] != "" { // separates conditions with AND logical operator
+				queryBlocks[1] = sepOperator + queryBlocks[1]
+			}
+			if cond.IsBracket { // handle bracket condition
+				queryBlocks[1] = "(" + cond.FieldName + cond.Operator + fmt.Sprintf("%v", cond.Value) + ")" + queryBlocks[1]
+			} else {
+				queryBlocks[1] = cond.FieldName + cond.Operator + fmt.Sprintf("%v", cond.Value) + queryBlocks[1]
+			}
+
+			continue
 		}
 
 		if queryBlocks[1] != "" { // separates conditions with AND logical operator

@@ -74,15 +74,15 @@ func isSlicesEqual(a, b []string) bool {
 
 var testGetConditionsListCases = []struct {
 	// Query params
-	Query     string
-	IsSearch  bool
+	Query    string
+	IsSearch bool
 	// Response
 	CondExprsList []*CondExpr
 	Err           error
 }{
 	{ // 1. Test single condition extraction
 		Query:         "?ID==1?",
-		IsSearch: false,
+		IsSearch:      false,
 		CondExprsList: []*CondExpr{{FieldName: "id", Operator: "=", Value: "1", IsBracket: false}},
 	},
 	{ // 2. Test multiple conditions extraction
@@ -91,7 +91,7 @@ var testGetConditionsListCases = []struct {
 		CondExprsList: []*CondExpr{{FieldName: "id", Operator: ">=", Value: "1", IsBracket: false}, {FieldName: "count", Operator: "!=", Value: "2", IsBracket: false}},
 	},
 	{ // 3. Test query with complex conditions block
-		Query: "?(ID>>1,2,3)*content==testText*count!=2?",
+		Query:    "?(ID>>1,2,3)*content==testText*count!=2?",
 		IsSearch: false,
 		CondExprsList: []*CondExpr{
 			{FieldName: "id", Operator: "&&", Value: "1,2,3", IsBracket: true},
@@ -111,8 +111,8 @@ var testGetConditionsListCases = []struct {
 		Err:           newError("Query string not passed"),
 	},
 	{ // 6. Test correct searchQuery
-		Query:    "content~~test||content~~notext",
-		IsSearch: true,
+		Query:         "content~~test||content~~notext",
+		IsSearch:      true,
 		CondExprsList: []*CondExpr{{FieldName: "content", Operator: "~~", Value: "test"}, {FieldName: "content", Operator: "~~", Value: "notext"}},
 	},
 	{ // 7. Test wrong searchQuery
@@ -409,6 +409,7 @@ var testAddQueryConditionsCases = []struct {
 	Query           string
 	NewConds        []CondExpr
 	IsDeleteCurrent bool
+	IsLeading       bool
 	// Response
 	RespQuery string
 	Err       error
@@ -424,6 +425,7 @@ var testAddQueryConditionsCases = []struct {
 			},
 		},
 		IsDeleteCurrent: false,
+		IsLeading:       false,
 		RespQuery:       "?ID==1?",
 	},
 	{ // 2. Test adding 2 conditions to empty conditions block
@@ -443,6 +445,7 @@ var testAddQueryConditionsCases = []struct {
 			},
 		},
 		IsDeleteCurrent: false,
+		IsLeading:       false,
 		RespQuery:       "ID?(ID==1)*count!=12?ID,asc,10,0",
 	},
 	{ // 3. Test adding condition to conditions block without deleting current
@@ -456,6 +459,7 @@ var testAddQueryConditionsCases = []struct {
 			},
 		},
 		IsDeleteCurrent: false,
+		IsLeading:       false,
 		RespQuery:       "ID?isBool==true*ID==1?ID,asc,10,0",
 	},
 	{ // 4. Test adding condition to conditions block with deleting current
@@ -469,6 +473,7 @@ var testAddQueryConditionsCases = []struct {
 			},
 		},
 		IsDeleteCurrent: true,
+		IsLeading:       false,
 		RespQuery:       "ID?(isBool==false)?ID,asc,10,0",
 	},
 	{ // 5. Test ERROR
@@ -482,15 +487,50 @@ var testAddQueryConditionsCases = []struct {
 			},
 		},
 		IsDeleteCurrent: true,
+		IsLeading:       false,
 		RespQuery:       "ID?isBool==true?ID,asc,10,0",
 		Err:             newError("Passed incorrect operator in query condition - ^="),
+	},
+	{ // 6. Test leading condition insertion
+		Query: "ID?isBool==true?ID,asc,10,0",
+		NewConds: []CondExpr{
+			{
+				FieldName: "ID",
+				Operator:  "==",
+				Value:     1,
+				IsBracket: false,
+			},
+		},
+		IsDeleteCurrent: false,
+		IsLeading:       true,
+		RespQuery:       "ID?ID==1*isBool==true?ID,asc,10,0",
+	},
+	{ // 7. Test multiple leading conditions insertion
+		Query: "ID?isBool==true?ID,asc,10,0",
+		NewConds: []CondExpr{
+			{
+				FieldName: "ID",
+				Operator:  "==",
+				Value:     1,
+				IsBracket: false,
+			},
+			{
+				FieldName: "name",
+				Operator:  "!=",
+				Value:     "smth",
+				IsBracket: true,
+			},
+		},
+		IsDeleteCurrent: false,
+		IsLeading:       true,
+		RespQuery:       "ID?(name!=smth)*ID==1*isBool==true?ID,asc,10,0",
 	},
 }
 
 func TestAddQueryConditions(t *testing.T) {
 	for index, c := range testAddQueryConditionsCases {
 		t.Run(strconv.Itoa(index+1), func(t *testing.T) {
-			respQuery, err := AddQueryConditions(c.Query, c.NewConds, c.IsDeleteCurrent)
+			respQuery, err := AddQueryConditions(c.Query, c.NewConds, c.IsDeleteCurrent, c.IsLeading)
 			if err != nil && c.Err.Error() != err.Error() {
 				t.Errorf("expected err: %v, got: %v", c.Err, err)
 				t.FailNow()
