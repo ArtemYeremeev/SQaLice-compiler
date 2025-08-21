@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-var mathOperatorsList = []string{"==", "!=", "<=", "<", ">=", ">>", ">"}
+var mathOperatorsList = []string{"==", "!=", "<=", "<", ">=", ">>", ">", "!!"}
 
 // CondExpr describes structure of query condition
 type CondExpr struct {

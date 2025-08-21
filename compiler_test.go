@@ -521,6 +521,16 @@ var testGetCases = []struct {
 		MainQuery:  "select q.id from v_test q order by q.id desc, q.is_bool desc limit 10 offset 0",
 		Err:        newError(""),
 	},
+	{ // 50. Test NOT OVERLAPS operator in condition
+		Target:    "v_test",
+		Params:    "ID?ID!!1?",
+		WithCount: true,
+		WithArgs:  false,
+
+		MainQuery:  "select q.id from v_test q where not q.id && 1",
+		CountQuery: "select count(*) from (select 1 from v_test q where not q.id && 1) q",
+		Err:        newError(""),
+	},
 }
 
 func TestGet(t *testing.T) {
