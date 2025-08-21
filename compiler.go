@@ -23,6 +23,7 @@ var operatorBindings = map[string]string{
 	">":   ">",   // GREATER
 	">=":  ">=",  // GREATER OR EQUALS
 	">>":  "&&",  // OVERLAPS
+	"!>>": "!&&", // NOT OVERLAPS
 	"->>": "->>", // INCLUDES
 }
 
@@ -500,6 +501,15 @@ func formCondition(fieldsMap map[string]string, cond, logicalOperator string, is
 			return "", nil, nil, newError("Passed unexpected OVERLAPS operator in NULL condition")
 		default: // others
 			cond = field + " " + operatorBindings[sep] + " " + value
+		}
+	case "!&&": // handle NOT OVERLAPS operator
+		switch valueType {
+		case "ARRAY": // array format
+			cond = "not" + field + " && " + value
+		case "NULL": // unexpected null value
+			return "", nil, nil, newError("Passed unexpected NOT OVERLAPS operator in NULL condition")
+		default: // others
+			cond = "not" + field + " && " + value
 		}
 	default: // rest of operators
 		switch valueType {
