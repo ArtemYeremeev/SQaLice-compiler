@@ -531,6 +531,17 @@ var testGetCases = []struct {
 		CountQuery: "select count(*) from (select 1 from v_test q where not q.id && 1) q",
 		Err:        newError(""),
 	},
+	{ // 51. Test query with too big limit
+		Target:    "v_test",
+		Params:    "?ID==1?ID,desc,10000,0",
+		WithCount: true,
+		WithArgs:  true,
+
+		MainQuery:  "select q.id, q.content, q.count, q.extra_field, q.is_bool, q.one_more_field from v_test q where q.id = $1 order by q.id desc limit 1000 offset 0",
+		CountQuery: "select count(*) from (select 1 from v_test q where q.id = $1) q",
+		Args:       []interface{}{1},
+		Err:        newError(""),
+	},
 }
 
 func TestGet(t *testing.T) {

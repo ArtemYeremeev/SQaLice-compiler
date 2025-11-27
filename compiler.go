@@ -217,6 +217,10 @@ func combineRestrictions(fieldsMap map[string]string, rests string) (string, err
 			return "", newError("Invaild negative selection limit - " + limit)
 		}
 
+		if n > 1000 {
+			limit = "1000"
+		}
+
 		if restsBlock == "" {
 			restsBlock = "limit " + limit
 		} else {
