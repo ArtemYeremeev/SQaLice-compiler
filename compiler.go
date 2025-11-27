@@ -33,6 +33,11 @@ var nullOperatorBindings = map[string]string{
 	"!=": "!=", // NOT EQUALS
 }
 
+const (
+	maxLimitInt = 1000
+	maxLimitString = "1000"
+)
+
 // Get builds a GET query with parameters
 func Get(model interface{}, target, params string, withCount, withArgs bool) (mainQ, countQ string, args []interface{}, er error) {
 	return compile(model, target, params, withCount, withArgs, "")
@@ -175,7 +180,7 @@ func combineConditions(fieldsMap map[string]string, conds, searchParams string, 
 // combineRestrictions assembles selection parameters
 func combineRestrictions(fieldsMap map[string]string, rests string) (string, error) {
 	if rests == "" {
-		return "", nil
+		return "limit " + maxLimitString, nil
 	}
 	restsArr := strings.Split(rests, ",")
 	restsBlock := ""
@@ -217,8 +222,8 @@ func combineRestrictions(fieldsMap map[string]string, rests string) (string, err
 			return "", newError("Invaild negative selection limit - " + limit)
 		}
 
-		if n > 1000 {
-			limit = "1000"
+		if n > maxLimitInt {
+			limit = maxLimitString
 		}
 
 		if restsBlock == "" {
@@ -226,6 +231,8 @@ func combineRestrictions(fieldsMap map[string]string, rests string) (string, err
 		} else {
 			restsBlock = restsBlock + " limit " + limit
 		}
+	} else {
+		restsBlock = restsBlock + " limit " + maxLimitString
 	}
 
 	// offset

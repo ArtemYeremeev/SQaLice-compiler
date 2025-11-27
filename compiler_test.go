@@ -38,7 +38,7 @@ var testGetCases = []struct {
 		WithCount: true,
 		WithArgs:  false,
 
-		MainQuery:  "select q.id, q.content, q.count, q.extra_field, q.is_bool, q.one_more_field from v_test q",
+		MainQuery:  "select q.id, q.content, q.count, q.extra_field, q.is_bool, q.one_more_field from v_test q limit 1000",
 		CountQuery: "select count(*) from (select 1 from v_test q) q",
 		Err:        newError(""),
 	},
@@ -48,7 +48,7 @@ var testGetCases = []struct {
 		WithCount: true,
 		WithArgs:  false,
 
-		MainQuery:  "select q.id from v_test q",
+		MainQuery:  "select q.id from v_test q limit 1000",
 		CountQuery: "select count(*) from (select 1 from v_test q) q",
 		Err:        newError(""),
 	},
@@ -58,7 +58,7 @@ var testGetCases = []struct {
 		WithCount: true,
 		WithArgs:  false,
 
-		MainQuery:  "select q.id, q.content, q.count from v_test q",
+		MainQuery:  "select q.id, q.content, q.count from v_test q limit 1000",
 		CountQuery: "select count(*) from (select 1 from v_test q) q",
 		Err:        newError(""),
 	},
@@ -68,7 +68,7 @@ var testGetCases = []struct {
 		WithCount: false,
 		WithArgs:  false,
 
-		MainQuery:  "select q.id from v_test q where q.id = 1",
+		MainQuery:  "select q.id from v_test q where q.id = 1 limit 1000",
 		CountQuery: "",
 		Err:        newError(""),
 	},
@@ -78,7 +78,7 @@ var testGetCases = []struct {
 		WithCount: false,
 		WithArgs:  false,
 
-		MainQuery:  "select q.content from v_test q where q.id = 1 and q.id = 3",
+		MainQuery:  "select q.content from v_test q where q.id = 1 and q.id = 3 limit 1000",
 		CountQuery: "",
 		Err:        newError(""),
 	},
@@ -88,7 +88,7 @@ var testGetCases = []struct {
 		WithCount: false,
 		WithArgs:  false,
 
-		MainQuery:  "select q.id from v_test q where (q.id = 1 or q.id = 3)",
+		MainQuery:  "select q.id from v_test q where (q.id = 1 or q.id = 3) limit 1000",
 		CountQuery: "",
 		Err:        newError(""),
 	},
@@ -98,7 +98,7 @@ var testGetCases = []struct {
 		WithCount: false,
 		WithArgs:  false,
 
-		MainQuery:  "select q.id from v_test q where (q.id > 1 or q.id <= 3) and (q.content != test1 and q.content = test2)",
+		MainQuery:  "select q.id from v_test q where (q.id > 1 or q.id <= 3) and (q.content != test1 and q.content = test2) limit 1000",
 		CountQuery: "",
 		Err:        newError(""),
 	},
@@ -108,7 +108,7 @@ var testGetCases = []struct {
 		WithCount: false,
 		WithArgs:  false,
 
-		MainQuery:  "select q.id, q.count from v_test q where (q.count != 1 and q.count != 3) and q.id = 2",
+		MainQuery:  "select q.id, q.count from v_test q where (q.count != 1 and q.count != 3) and q.id = 2 limit 1000",
 		CountQuery: "",
 		Err:        newError(""),
 	},
@@ -118,7 +118,7 @@ var testGetCases = []struct {
 		WithCount: false,
 		WithArgs:  false,
 
-		MainQuery:  "select q.content, q.count from v_test q where (q.count != 1 and q.count != 3 or q.id >= 11) or (q.content = somethingawful or q.content = critical404) and q.id != 42",
+		MainQuery:  "select q.content, q.count from v_test q where (q.count != 1 and q.count != 3 or q.id >= 11) or (q.content = somethingawful or q.content = critical404) and q.id != 42 limit 1000",
 		CountQuery: "",
 		Err:        newError(""),
 	},
@@ -128,7 +128,7 @@ var testGetCases = []struct {
 		WithCount: false,
 		WithArgs:  false,
 
-		MainQuery:  "select q.id, q.is_bool from v_test q where q.id = any(1,2,test1)",
+		MainQuery:  "select q.id, q.is_bool from v_test q where q.id = any(1,2,test1) limit 1000",
 		CountQuery: "",
 		Err:        newError(""),
 	},
@@ -138,7 +138,7 @@ var testGetCases = []struct {
 		WithCount: false,
 		WithArgs:  false,
 
-		MainQuery:  "select q.count from v_test q where q.id = any(1,2,test1) and q.content = any(test2,true)",
+		MainQuery:  "select q.count from v_test q where q.id = any(1,2,test1) and q.content = any(test2,true) limit 1000",
 		CountQuery: "",
 		Err:        newError(""),
 	},
@@ -148,7 +148,7 @@ var testGetCases = []struct {
 		WithCount: true,
 		WithArgs:  false,
 
-		MainQuery:  "select q.id from v_test q where q.content && value",
+		MainQuery:  "select q.id from v_test q where q.content && value limit 1000",
 		CountQuery: "select count(*) from (select 1 from v_test q where q.content && value) q",
 		Err:        newError(""),
 	},
@@ -178,7 +178,7 @@ var testGetCases = []struct {
 		WithCount: false,
 		WithArgs:  false,
 
-		MainQuery:  "select q.id from v_test q order by q.id asc",
+		MainQuery:  "select q.id from v_test q order by q.id asc limit 1000",
 		CountQuery: "select count(*) from (select 1 from v_test q order by q.id) q",
 		Err:        newError(""),
 	},
@@ -328,7 +328,7 @@ var testGetCases = []struct {
 		WithCount: false,
 		WithArgs:  false,
 
-		MainQuery:  "select q.id from v_test q where not q.id = any(test1,test2)",
+		MainQuery:  "select q.id from v_test q where not q.id = any(test1,test2) limit 1000",
 		CountQuery: "",
 		Err:        newError(""),
 	},
@@ -348,7 +348,7 @@ var testGetCases = []struct {
 		WithCount: false,
 		WithArgs:  false,
 
-		MainQuery:  "select q.id from v_test q where q.content->>'ID' = 1",
+		MainQuery:  "select q.id from v_test q where q.content->>'ID' = 1 limit 1000",
 		CountQuery: "",
 		Err:        newError(""),
 	},
@@ -358,7 +358,7 @@ var testGetCases = []struct {
 		WithCount: false,
 		WithArgs:  false,
 
-		MainQuery:  "select q.id from v_test q where q.content->>'content' = test",
+		MainQuery:  "select q.id from v_test q where q.content->>'content' = test limit 1000",
 		CountQuery: "",
 		Err:        newError(""),
 	},
@@ -368,7 +368,7 @@ var testGetCases = []struct {
 		WithCount: false,
 		WithArgs:  false,
 
-		MainQuery:  "select q.id from v_test q where q.content->>'ID' = any(vla,2)",
+		MainQuery:  "select q.id from v_test q where q.content->>'ID' = any(vla,2) limit 1000",
 		CountQuery: "",
 		Err:        newError(""),
 	},
@@ -378,7 +378,7 @@ var testGetCases = []struct {
 		WithCount: false,
 		WithArgs:  false,
 
-		MainQuery:  "select q.id from v_test q where q.content is null",
+		MainQuery:  "select q.id from v_test q where q.content is null limit 1000",
 		CountQuery: "",
 		Err:        newError(""),
 	},
@@ -388,7 +388,7 @@ var testGetCases = []struct {
 		WithCount: false,
 		WithArgs:  false,
 
-		MainQuery:  "select q.id from v_test q where q.content is not null or q.id is null",
+		MainQuery:  "select q.id from v_test q where q.content is not null or q.id is null limit 1000",
 		CountQuery: "",
 		Err:        newError(""),
 	},
@@ -418,7 +418,7 @@ var testGetCases = []struct {
 		WithCount: false,
 		WithArgs:  true,
 
-		MainQuery: "select q.id, q.content, q.count, q.extra_field, q.is_bool, q.one_more_field from v_test q",
+		MainQuery: "select q.id, q.content, q.count, q.extra_field, q.is_bool, q.one_more_field from v_test q limit 1000",
 		Err:        newError(""),
 	},
 	{ // 40. Test query with single condition (withArgs)
@@ -427,7 +427,7 @@ var testGetCases = []struct {
 		WithCount: true,
 		WithArgs:  true,
 
-		MainQuery:  "select q.id, q.content, q.count, q.extra_field, q.is_bool, q.one_more_field from v_test q where q.id = $1",
+		MainQuery:  "select q.id, q.content, q.count, q.extra_field, q.is_bool, q.one_more_field from v_test q where q.id = $1 limit 1000",
 		CountQuery: "select count(*) from (select 1 from v_test q where q.id = $1) q",
 		Args:       []interface{}{1},
 		Err:        newError(""),
@@ -438,7 +438,7 @@ var testGetCases = []struct {
 		WithCount: true,
 		WithArgs:  true,
 
-		MainQuery:  "select q.id, q.extra_field from v_test q where q.id = $1 or q.id = $2 or q.content != $3",
+		MainQuery:  "select q.id, q.extra_field from v_test q where q.id = $1 or q.id = $2 or q.content != $3 limit 1000",
 		CountQuery: "select count(*) from (select 1 from v_test q where q.id = $1 or q.id = $2 or q.content != $3) q",
 		Args:       []interface{}{1, 2, "smth"},
 		Err:        newError(""),
@@ -449,7 +449,7 @@ var testGetCases = []struct {
 		WithCount: true,
 		WithArgs:  true,
 
-		MainQuery:  "select q.id from v_test q where (q.id = $1 and q.content = $2) or q.content != $3 and q.id != $4",
+		MainQuery:  "select q.id from v_test q where (q.id = $1 and q.content = $2) or q.content != $3 and q.id != $4 limit 1000",
 		CountQuery: "select count(*) from (select 1 from v_test q where (q.id = $1 and q.content = $2) or q.content != $3 and q.id != $4) q",
 		Args:       []interface{}{1, "anth", "smth", 8},
 		Err:        newError(""),
@@ -481,7 +481,7 @@ var testGetCases = []struct {
 		WithCount:  false,
 		WithArgs:   true,
 
-		MainQuery:  "select q.id from v_test q where q.content->>'content' = $1",
+		MainQuery:  "select q.id from v_test q where q.content->>'content' = $1 limit 1000",
 		Args:       []interface{}{"smth"},
 		Err:        newError(""),
 	},
@@ -500,7 +500,7 @@ var testGetCases = []struct {
 		WithCount: false,
 		WithArgs:  false,
 
-		MainQuery:  "select q.id from v_test q order by q.id asc",
+		MainQuery:  "select q.id from v_test q order by q.id asc limit 1000",
 		Err:        newError(""),
 	},
 	{ // 48. Test restrictions params block with two order fields without order
@@ -509,7 +509,7 @@ var testGetCases = []struct {
 		WithCount: false,
 		WithArgs:  false,
 
-		MainQuery:  "select q.id from v_test q where q.content = smth order by q.is_bool asc, q.id asc",
+		MainQuery:  "select q.id from v_test q where q.content = smth order by q.is_bool asc, q.id asc limit 1000",
 		Err:        newError(""),
 	},
 	{ // 49. Test restrictions params block with two order fields and other order
@@ -527,7 +527,7 @@ var testGetCases = []struct {
 		WithCount: true,
 		WithArgs:  false,
 
-		MainQuery:  "select q.id from v_test q where not q.id && 1",
+		MainQuery:  "select q.id from v_test q where not q.id && 1 limit 1000",
 		CountQuery: "select count(*) from (select 1 from v_test q where not q.id && 1) q",
 		Err:        newError(""),
 	},
@@ -598,7 +598,7 @@ var testSearchCases = []struct {
 		WithCount:    true,
 		WithArgs:     false,
 
-		MainQuery:    "select q.id, q.content, q.count, q.extra_field, q.is_bool, q.one_more_field from v_test q",
+		MainQuery:    "select q.id, q.content, q.count, q.extra_field, q.is_bool, q.one_more_field from v_test q limit 1000",
 		CountQuery:   "select count(*) from (select 1 from v_test q) q",
 		Err:          newError(""),
 	},
@@ -609,7 +609,7 @@ var testSearchCases = []struct {
 		WithArgs:     false,
 		SearchParams: "content~~something",
 
-		MainQuery:    "select q.id, q.content, q.count, q.extra_field, q.is_bool, q.one_more_field from v_test q where (lower(q.content::text) like %something%)",
+		MainQuery:    "select q.id, q.content, q.count, q.extra_field, q.is_bool, q.one_more_field from v_test q where (lower(q.content::text) like %something%) limit 1000",
 		CountQuery:   "select count(*) from (select 1 from v_test q where (lower(q.content::text) like %something%)) q",
 		Err:          newError(""),
 	},
@@ -620,7 +620,7 @@ var testSearchCases = []struct {
 		WithArgs:     false,
 		SearchParams: "ID~~123",
 
-		MainQuery:    "select q.id, q.content, q.count from v_test q where (lower(q.id::text) like %123%)",
+		MainQuery:    "select q.id, q.content, q.count from v_test q where (lower(q.id::text) like %123%) limit 1000",
 		CountQuery:   "select count(*) from (select 1 from v_test q where (lower(q.id::text) like %123%)) q",
 		Err:          newError(""),
 	},
@@ -631,7 +631,7 @@ var testSearchCases = []struct {
 		WithArgs:     false,
 		SearchParams: "extraField~~ok",
 
-		MainQuery:    "select q.is_bool from v_test q where (lower(q.extra_field::text) like %ok%) and q.id = 1",
+		MainQuery:    "select q.is_bool from v_test q where (lower(q.extra_field::text) like %ok%) and q.id = 1 limit 1000",
 		CountQuery:   "select count(*) from (select 1 from v_test q where (lower(q.extra_field::text) like %ok%) and q.id = 1) q",
 		Err:          newError(""),
 	},
@@ -664,7 +664,7 @@ var testSearchCases = []struct {
 		WithArgs:     false,
 		SearchParams: "extraField~~ok||content~~something||content~~anything",
 
-		MainQuery:    "select q.id from v_test q where (lower(q.extra_field::text) like %ok% or lower(q.content::text) like %something% or lower(q.content::text) like %anything%) order by q.id asc",
+		MainQuery:    "select q.id from v_test q where (lower(q.extra_field::text) like %ok% or lower(q.content::text) like %something% or lower(q.content::text) like %anything%) order by q.id asc limit 1000",
 		CountQuery:   "",
 		Err:          newError(""),
 	},
@@ -675,7 +675,7 @@ var testSearchCases = []struct {
 		WithArgs:     false,
 		SearchParams: "extraField~~ok||content~~something||content~~anything",
 
-		MainQuery:    "select q.id from v_test q where (lower(q.extra_field::text) like %ok% or lower(q.content::text) like %something% or lower(q.content::text) like %anything%) and q.is_bool = true",
+		MainQuery:    "select q.id from v_test q where (lower(q.extra_field::text) like %ok% or lower(q.content::text) like %something% or lower(q.content::text) like %anything%) and q.is_bool = true limit 1000",
 		CountQuery:   "",
 		Err:          newError(""),
 	},
@@ -686,7 +686,7 @@ var testSearchCases = []struct {
 		WithArgs:     false,
 		SearchParams: "extraField~~any||content~~something||content~~nothing",
 
-		MainQuery:    "select q.id from v_test q where (lower(q.extra_field::text) like %any% or lower(q.content::text) like %something% or lower(q.content::text) like %nothing%) and q.is_bool = true or q.content = anything",
+		MainQuery:    "select q.id from v_test q where (lower(q.extra_field::text) like %any% or lower(q.content::text) like %something% or lower(q.content::text) like %nothing%) and q.is_bool = true or q.content = anything limit 1000",
 		CountQuery:   "",
 		Err:          newError(""),
 	},
@@ -708,7 +708,7 @@ var testSearchCases = []struct {
 		WithArgs:     false,
 		SearchParams: "(content~~1||content~~2)*extraField~~ok",
 
-		MainQuery:    "select q.id from v_test q where (lower(q.content::text) like %1% or lower(q.content::text) like %2% and lower(q.extra_field::text) like %ok%)",
+		MainQuery:    "select q.id from v_test q where (lower(q.content::text) like %1% or lower(q.content::text) like %2% and lower(q.extra_field::text) like %ok%) limit 1000",
 		CountQuery:   "",
 		Err:          newError(""),
 	},
@@ -719,7 +719,7 @@ var testSearchCases = []struct {
 		WithArgs:     false,
 		SearchParams: "(content~~1||content~~2)*(extraField~~some||extraField~~any)",
 
-		MainQuery:    "select q.id, q.content, q.extra_field from v_test q where (lower(q.content::text) like %1% or lower(q.content::text) like %2% and lower(q.extra_field::text) like %some% or lower(q.extra_field::text) like %any%) order by q.id desc",
+		MainQuery:    "select q.id, q.content, q.extra_field from v_test q where (lower(q.content::text) like %1% or lower(q.content::text) like %2% and lower(q.extra_field::text) like %some% or lower(q.extra_field::text) like %any%) order by q.id desc limit 1000",
 		CountQuery:   "",
 		Err:          newError(""),
 	},
@@ -730,7 +730,7 @@ var testSearchCases = []struct {
 		WithArgs:     false,
 		SearchParams: "content~~content^^ая/n",
 
-		MainQuery:    "select q.id from v_test q where (lower(q.content->>'content'::text) like %ая%n%)",
+		MainQuery:    "select q.id from v_test q where (lower(q.content->>'content'::text) like %ая%n%) limit 1000",
 		CountQuery:   "",
 		Err:          newError(""),
 	},
@@ -741,7 +741,7 @@ var testSearchCases = []struct {
 		WithArgs:     true,
 		SearchParams: "content~~something",
 
-		MainQuery:    "select q.id, q.content, q.count, q.extra_field, q.is_bool, q.one_more_field from v_test q where (lower(q.content::text) like $1)",
+		MainQuery:    "select q.id, q.content, q.count, q.extra_field, q.is_bool, q.one_more_field from v_test q where (lower(q.content::text) like $1) limit 1000",
 		CountQuery:   "select count(*) from (select 1 from v_test q where (lower(q.content::text) like $1)) q",
 		Args:         []interface{}{"%something%"},
 		Err:          newError(""),
@@ -753,7 +753,7 @@ var testSearchCases = []struct {
 		WithArgs:     true,
 		SearchParams: "ID~~1",
 
-		MainQuery:    "select q.content from v_test q where (lower(q.id::text) like $1) and q.id != $2 order by q.id asc",
+		MainQuery:    "select q.content from v_test q where (lower(q.id::text) like $1) and q.id != $2 order by q.id asc limit 1000",
 		CountQuery:   "select count(*) from (select 1 from v_test q where (lower(q.id::text) like $1) and q.id != $2) q",
 		Args:         []interface{}{"%1%", 1},
 		Err:          newError(""),
@@ -765,7 +765,7 @@ var testSearchCases = []struct {
 		WithArgs:     true,
 		SearchParams: "ID~~1||content~~smth",
 
-		MainQuery:    "select q.id from v_test q where (lower(q.id::text) like $1 or lower(q.content::text) like $2) and (q.id = any($3) or q.is_bool = $4) and q.content != $5",
+		MainQuery:    "select q.id from v_test q where (lower(q.id::text) like $1 or lower(q.content::text) like $2) and (q.id = any($3) or q.is_bool = $4) and q.content != $5 limit 1000",
 		CountQuery:   "select count(*) from (select 1 from v_test q where (lower(q.id::text) like $1 or lower(q.content::text) like $2) and (q.id = any($3) or q.is_bool = $4) and q.content != $5) q",
 		Args:         []interface{}{"%1%", "%smth%", []int{1, 2, 13}, true, "anth"},
 		Err:          newError(""),
@@ -777,7 +777,7 @@ var testSearchCases = []struct {
 		WithArgs:     true,
 		SearchParams: "content~~smth",
 
-		MainQuery:    "select q.content from v_test q where (lower(q.content::text) like $1) and q.content && $2",
+		MainQuery:    "select q.content from v_test q where (lower(q.content::text) like $1) and q.content && $2 limit 1000",
 		CountQuery:   "select count(*) from (select 1 from v_test q where (lower(q.content::text) like $1) and q.content && $2) q",
 		Args:         []interface{}{"%smth%", []int{1,2}},
 		Err:          newError(""),
@@ -801,7 +801,7 @@ var testSearchCases = []struct {
 		WithArgs:     true,
 		SearchParams: "content~~smth",
 
-		MainQuery:    "select q.content from v_test q where (lower(q.content::text) like $1) and q.id != $2 offset 5",
+		MainQuery:    "select q.content from v_test q where (lower(q.content::text) like $1) and q.id != $2 limit 1000 offset 5",
 		CountQuery:   "select count(*) from (select 1 from v_test q where (lower(q.content::text) like $1) and q.id != $2) q",
 		Args:         []interface{}{"%smth%", 1},
 		Err:          newError(""),
@@ -813,7 +813,7 @@ var testSearchCases = []struct {
 		WithArgs:     true,
 		SearchParams: "content~~(anth)",
 
-		MainQuery:    "select q.id from v_test q where (lower(q.content::text) like $1)",
+		MainQuery:    "select q.id from v_test q where (lower(q.content::text) like $1) limit 1000",
 		CountQuery:   "select count(*) from (select 1 from v_test q where (lower(q.content::text) like $1)) q",
 		Args:         []interface{}{"%anth%", 1},
 		Err:          newError(""),
