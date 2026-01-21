@@ -34,8 +34,8 @@ var nullOperatorBindings = map[string]string{
 }
 
 const (
-	maxLimitInt = 1000
-	maxLimitString = "1000"
+	maxLimitInt = 10000
+	maxLimitString = "10000"
 )
 
 // Get builds a GET query with parameters
