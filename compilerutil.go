@@ -28,15 +28,11 @@ func formDinamicModel(model interface{}) map[string]string {
 	return fieldsMap
 }
 
-func addPGQuotes(str string) string {
-	return "'" + str + "'"
-}
-
 func newError(errText string) error {
 	if errText == "" {
 		errText = "Unexpected error"
 	}
-	return errors.New("[SQaLice] " + errText)
+	return errors.New(errText)
 }
 
 // sortMap sorts map elements in alphabetic order
